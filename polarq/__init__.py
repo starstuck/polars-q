@@ -19,8 +19,8 @@ Typical usage in pure Python:
     )
 
     # Or transpile a .q file:
-    from polarq.transpiler import load_q
-    load_q("strategy.q", q.env)
+    from polarq.transpiler import loadq
+    loadq("strategy.q", q.env)
 """
 
 from polarq.types     import (QAtom, QVector, QList, QDict,

@@ -1,6 +1,6 @@
 """
-load_q(path, env)  — parse + transpile + exec a .q file into a QEnv.
-quick_eval(source, env) — parse + transpile + exec a q expression string.
+loadq(path, env)  — parse + transpile + exec a .q file into a QEnv.
+evalq(source, env) — parse + transpile + exec a q expression string.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from polarq.parser import parse, parse_expr
 from polarq.transpiler.transpiler import QToPythonTranspiler
 
 
-def load_q(path: str, env: QEnv) -> None:
+def loadq(path: str, env: QEnv) -> None:
     """Load a .q file, transpile to Python, and exec into env."""
     with open(path) as fh:
         source = fh.read()
@@ -19,7 +19,7 @@ def load_q(path: str, env: QEnv) -> None:
     _exec_script(script, env)
 
 
-def quick_eval(source: str, env: QEnv):
+def evalq(source: str, env: QEnv):
     """
     Parse and evaluate a single q expression string.
     Returns the result of the last statement.

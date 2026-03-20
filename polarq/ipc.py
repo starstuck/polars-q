@@ -36,8 +36,8 @@ class PolarQServer(flight.FlightServerBase):
         try:
             result = self.env.get(query)
         except KeyError:
-            from polarq.transpiler import quick_eval
-            result = quick_eval(query, self.env)
+            from polarq.transpiler import evalq
+            result = evalq(query, self.env)
 
         if not isinstance(result, QTable):
             raise flight.FlightServerError("result is not a table")

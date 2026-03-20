@@ -220,10 +220,10 @@ print(result.frame.collect())
 
 ```python
 # Transpile a .q file directly
-from polarq.transpiler import load_q
+from polarq.transpiler import loadq
 
 q = Q()
-load_q("strategy.q", q.env)   # all definitions land in q.env
+loadq("strategy.q", q.env)   # all definitions land in q.env
 
 # Call a q function from Python
 vwap_fn = q.env.get("vwap")
