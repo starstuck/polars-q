@@ -21,16 +21,10 @@ def loadq(path: str, env: QEnv) -> None:
 
 def evalq(source: str, env: QEnv):
     """
-    Parse and evaluate a single q expression string.
-    Returns the result of the last statement.
+    Parse and evaluate a q source string (one or more statements).
+    Returns the value of the last assignment, or None for expression-only scripts.
     """
-    from polarq.parser.ast_nodes import Script
-    node = parse_expr(source)
-    if not isinstance(node, Script):
-        from polarq.parser.ast_nodes import Script as S
-        script = S((node,))
-    else:
-        script = node
+    script = parse(source)
     return _exec_script(script, env)
 
 

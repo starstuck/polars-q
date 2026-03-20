@@ -182,8 +182,9 @@ class QToPythonTranspiler:
         fn_body.append(py_ast.Return(value=self._expr(body[-1])))
         # Emit a module-level def (referenced by name)
         # For now we produce a lambda-compatible expression for simple bodies
-        if len(body) == 1 and not params:
-            # Simple single-expression lambda
+        if len(body) == 1:
+            # Single-expression lambda — works regardless of whether params are
+            # implicit or explicit, since Python lambda handles both.
             return py_ast.Lambda(args=args, body=self._expr(body[0]))
         # Multi-statement: cannot inline; caller should hoist to def
         raise NotImplementedError(
