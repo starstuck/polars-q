@@ -26,11 +26,15 @@ def over(verb: QBuiltin, x: QValue, init: QValue = None) -> QValue:
         return curr
 
     # Standard fold
-    items = x.series.to_list() if isinstance(x, QVector) else x.items
-    acc   = init if init is not None else items[0]
+    # QVector.series.to_list() produces plain Python scalars; wrap in QAtom so
+    # that verb.dyad always receives proper QValue arguments.
+    if isinstance(x, QVector):
+        items = [QAtom(v, x.kind) for v in x.series.to_list()]
+    else:
+        items = x.items
+    acc = init if init is not None else items[0]
     for item in (items if init is not None else items[1:]):
-        item_val = QAtom(item, x.kind) if not isinstance(item, QValue) else item
-        acc = verb.dyad(acc, item_val)
+        acc = verb.dyad(acc, item)
     return acc
 
 

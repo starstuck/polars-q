@@ -4,6 +4,8 @@ from typing import Any, Optional, Callable
 import polars as pl
 import numpy as np
 
+from polarq.errors import QError, QTypeError, QLengthError, QRankError, QDomainError  # noqa: F401
+
 # ── Null sentinel ────────────────────────────────────────────────────────────
 
 class QNull:
