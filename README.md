@@ -1,5 +1,7 @@
 # polarq
 
+[![CI](https://github.com/starstuck/polars-q/actions/workflows/ci.yml/badge.svg)](https://github.com/starstuck/polars-q/actions/workflows/ci.yml)
+
 **q/kdb+ semantics on Polars + Arrow Flight — runs natively in CPython.**
 
 polarq is a Python library that brings the expressive power of q/kdb+ to the Python ecosystem. It works in two complementary ways: as a **transpiler** that compiles `.q` source files into native Python bytecode, and as a **runtime library** that backs that generated code with Polars-accelerated implementations of q's type system, verbs, adverbs, and table operations.
@@ -307,6 +309,13 @@ neg[h] (`upd; data)         client.put("trade", qtable)
 Arrow Flight carries Arrow record batches natively. Because `QTable.frame` is a Polars `LazyFrame` and Polars speaks Arrow natively, the data path from query result to wire is zero-copy in both directions.
 
 ---
+
+## Implementation status
+
+The [CI feature coverage report](https://github.com/starstuck/polars-q/actions/workflows/ci.yml)
+shows which q language features are currently working, which are planned, and which are
+failing — organised to mirror the [q reference card](https://code.kx.com/q/ref/).
+Click any CI run and open the **Feature coverage report** step summary to see the full table.
 
 ## Development roadmap
 

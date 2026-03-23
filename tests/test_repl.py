@@ -21,59 +21,13 @@ or a new test method to extend coverage.
 
 import io
 import contextlib
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
 from polarq.env import QEnv
-from polarq.repl import repl, _brace_depth
-
-
-# ── Test helper ───────────────────────────────────────────────────────────────
-
-def run_repl(lines: list[str], env: QEnv | None = None) -> tuple[str, QEnv]:
-    """
-    Run the REPL with a scripted sequence of input lines.
-    Returns (captured_stdout, env).
-
-    The last line does NOT need to be ``\\q``; when the fake input is exhausted
-    it raises EOFError, which the REPL treats as Ctrl-D (clean exit).
-    """
-    if env is None:
-        env = QEnv()
-
-    inputs = iter(lines)
-
-    def fake_input(prompt=""):
-        try:
-            return next(inputs)
-        except StopIteration:
-            raise EOFError
-
-    buf = io.StringIO()
-    with patch("builtins.input", side_effect=fake_input):
-        with contextlib.redirect_stdout(buf):
-            repl(env)
-
-    return buf.getvalue(), env
-
-
-def output_lines(lines: list[str], env: QEnv | None = None) -> list[str]:
-    """Run the REPL and return non-empty, non-banner output lines."""
-    out, _ = run_repl(lines, env)
-    # Strip the 4-line banner and blank line that precede q) prompts
-    result = []
-    for line in out.splitlines():
-        stripped = line.strip()
-        # Skip banner lines and the EOF indicator
-        if stripped in ("\\",):
-            continue
-        if stripped.startswith("polarq") or stripped.startswith("\\"):
-            continue
-        if stripped == "":
-            continue
-        result.append(stripped)
-    return result
+from polarq.repl import repl, _brace_depth, _Q_PROMPT, _Q_CONTINUE, _PY_PROMPT, _PY_CONTINUE
+from conftest import run_repl, output_lines
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -377,3 +331,184 @@ class TestErrorHandling:
         # qSQL is not yet transpiled — triggers NotImplementedError
         out, _ = run_repl(["select from t"])
         assert "nyi" in out
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Basic REPL prompt use
+#
+# These tests verify the *visible experience* of the REPL — the sequence of
+# prompts shown to the user — rather than just the side-effects on the env.
+#
+# A second helper ``transcript()`` records every (prompt, line) pair that
+# ``input()`` is called with, giving a precise trace of what the user sees.
+# ═════════════════════════════════════════════════════════════════════════════
+
+def transcript(lines: list[str], env: QEnv | None = None) -> tuple[list[tuple[str,str]], str, QEnv]:
+    """
+    Run the REPL and return ``(calls, stdout, env)`` where *calls* is a list
+    of ``(prompt, line)`` pairs — one entry per ``input()`` invocation —
+    recording exactly which prompt was shown for each user line.
+    """
+    if env is None:
+        env = QEnv()
+
+    calls: list[tuple[str, str]] = []
+    inputs = iter(lines)
+
+    def fake_input(prompt=""):
+        try:
+            line = next(inputs)
+        except StopIteration:
+            raise EOFError
+        calls.append((prompt, line))
+        return line
+
+    buf = io.StringIO()
+    with patch("builtins.input", side_effect=fake_input):
+        with contextlib.redirect_stdout(buf):
+            repl(env)
+
+    return calls, buf.getvalue(), env
+
+
+class TestBasicPromptUse:
+    """
+    Verify the prompts shown to the user during typical REPL interactions.
+
+    Each test describes a concrete user session and asserts on the exact
+    sequence of prompts, making it immediately clear what the user would see
+    on their terminal.
+    """
+
+    # ── q) prompt ─────────────────────────────────────────────────────────
+
+    def test_first_prompt_is_q(self):
+        """The very first thing the user sees is the q) prompt."""
+        calls, _, _ = transcript(["42"])
+        assert calls[0][0] == _Q_PROMPT
+
+    def test_every_q_line_gets_q_prompt(self):
+        """Each line in q mode is preceded by q)."""
+        calls, _, _ = transcript(["x:1", "y:2", "z:3"])
+        prompts = [p for p, _ in calls]
+        assert all(p == _Q_PROMPT for p in prompts)
+
+    def test_q_prompt_string_value(self):
+        """The q mode prompt is exactly 'q) ' (with trailing space)."""
+        calls, _, _ = transcript(["1"])
+        assert calls[0][0] == "q) "
+
+    # ── >>> prompt ────────────────────────────────────────────────────────
+
+    def test_python_mode_prompt_is_triple_arrow(self):
+        r"""After \, the prompt changes to >>>."""
+        calls, _, _ = transcript(["\\", "1+1", "\\q"])
+        py_prompts = [p for p, line in calls if line in ("1+1",)]
+        assert py_prompts == [_PY_PROMPT]
+
+    def test_python_prompt_string_value(self):
+        r"""The Python mode prompt is exactly '>>> ' (with trailing space)."""
+        calls, _, _ = transcript(["\\", "42", "\\q"])
+        py_calls = [(p, l) for p, l in calls if l == "42"]
+        assert py_calls[0][0] == ">>> "
+
+    def test_prompt_returns_to_q_after_backslash_q(self):
+        r"""After \q in Python mode, subsequent lines get the q) prompt again."""
+        calls, _, _ = transcript(["\\", "1", "\\q", "x:5"])
+        # The last call (x:5) must use the q) prompt
+        assert calls[-1][0] == _Q_PROMPT
+
+    # ── Continuation prompt ───────────────────────────────────────────────
+
+    def test_continuation_prompt_on_open_brace(self):
+        """An unclosed { triggers the continuation prompt on the next line."""
+        calls, _, _ = transcript([
+            "f:{",      # first line — opens a brace
+            "x*x}",     # second line — closes it
+        ])
+        assert calls[0][0] == _Q_PROMPT    # first line: q) prompt
+        assert calls[1][0] == _Q_CONTINUE  # second line: continuation
+
+    def test_continuation_prompt_string_value(self):
+        """The continuation prompt is exactly '   ' (three spaces)."""
+        calls, _, _ = transcript(["f:{", "x}"])
+        assert calls[1][0] == "   "
+
+    def test_no_continuation_for_balanced_braces(self):
+        """A single-line lambda (balanced braces) does not trigger continuation."""
+        calls, _, _ = transcript(["{x+y}"])
+        assert len(calls) == 1
+        assert calls[0][0] == _Q_PROMPT
+
+    def test_double_open_needs_two_continuations(self):
+        """Two unclosed braces require two continuation lines."""
+        calls, _, _ = transcript([
+            "f:{{",     # depth 2
+            "x+",       # depth 2, still open
+            "y}}",      # depth 0, balanced
+        ])
+        assert calls[0][0] == _Q_PROMPT
+        assert calls[1][0] == _Q_CONTINUE
+        assert calls[2][0] == _Q_CONTINUE
+
+    # ── Mode-switch sequence ──────────────────────────────────────────────
+
+    def test_prompt_sequence_for_mode_switch(self):
+        r"""
+        Complete prompt sequence for:   x:1  \  2+2  \q  y:3
+        Expected:  q)  q)  >>>  q)
+        (the \\ and \q lines consume prompts too)
+        """
+        calls, _, _ = transcript(["x:1", "\\", "2+2", "\\q", "y:3"])
+        prompts = [p for p, _ in calls]
+        # x:1  → q)
+        assert prompts[0] == _Q_PROMPT
+        # \\   → q)  (mode-switch line is read under q) prompt)
+        assert prompts[1] == _Q_PROMPT
+        # 2+2  → >>>
+        assert prompts[2] == _PY_PROMPT
+        # \q   → >>>  (the exit command is read under >>> prompt)
+        assert prompts[3] == _PY_PROMPT
+        # y:3  → q)  (back in q mode)
+        assert prompts[4] == _Q_PROMPT
+
+    # ── Session transcripts ───────────────────────────────────────────────
+
+    def test_typical_session_output(self):
+        """
+        A representative session:
+
+            q) x:10
+            q) x
+            10
+            q) v:1 2 3
+            q) v
+            [1, 2, 3]
+            q) \\q
+        """
+        calls, out, env = transcript(["x:10", "x", "v:1 2 3", "v", "\\q"])
+        assert env.get("x") == 10
+        assert "10" in out
+        assert "1" in out and "2" in out and "3" in out
+        # All five lines read under q) prompt
+        assert all(p == _Q_PROMPT for p, _ in calls)
+
+    def test_python_session_output(self):
+        r"""
+        Python sub-session:
+
+            q) \\
+              (Python mode …)
+            >>> x = 7
+            >>> x
+            7
+            >>> \q
+            q) \\q
+        """
+        calls, out, env = transcript(["\\", "x = 7", "x", "\\q", "\\q"])
+        assert "7" in out
+        # Verify prompt sequence: q) for \\, then >>> for Python lines
+        assert calls[0][0] == _Q_PROMPT   # the \\ line
+        assert calls[1][0] == _PY_PROMPT  # x = 7
+        assert calls[2][0] == _PY_PROMPT  # x
+        assert calls[3][0] == _PY_PROMPT  # \q (exit Python)
