@@ -76,7 +76,7 @@ class TestLiteralOutput:
 
     def test_bool_true(self):
         lines = output_lines(["1b"])
-        assert any("True" in l for l in lines)
+        assert any("1b" in l for l in lines)
 
     def test_symbol(self):
         lines = output_lines(["`AAPL"])

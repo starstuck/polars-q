@@ -27,6 +27,11 @@ VERB_MAP: dict[str, tuple[str, str]] = {
     "where":    ("polarq.verbs", "q_where"),
     "distinct": ("polarq.verbs", "q_distinct"),
     "group":    ("polarq.verbs", "q_group"),
+    # dyadic named keywords — used via BinOp after parser fix
+    "div":        ("polarq.verbs", "q_idiv"),
+    "mod":        ("polarq.verbs", "q_mod"),
+    "xexp":       ("polarq.verbs", "q_xexp"),
+    "xlog":       ("polarq.verbs", "q_xlog"),
 }
 
 ADVERB_MAP: dict[str, tuple[str, str]] = {

@@ -34,9 +34,18 @@ q_mul = QBuiltin("mul",
     monad = lambda x: x,                              # monadic * = first of list
     dyad  = _arith(lambda a,b: a*b, lambda a,b: a*b)
 )
+def _div_dyad(x: QValue, y: QValue) -> QValue:
+    """q % always returns float."""
+    x, y = promote(x, y)
+    if isinstance(x, QAtom) and isinstance(y, QAtom):
+        return QAtom(float(x.value) / float(y.value), "f")
+    if isinstance(x, QVector) and isinstance(y, QVector):
+        return QVector(x.series.cast(pl.Float64) / y.series.cast(pl.Float64), "f")
+    raise QTypeError("type mismatch")
+
 q_div = QBuiltin("div",
     monad = lambda x: x,                              # monadic % = matrix inverse (not impl)
-    dyad  = _arith(lambda a,b: a/b, lambda a,b: a/b) # NB: q % is divide not modulo
+    dyad  = _div_dyad,                                # NB: q % is divide not modulo
 )
 
 # ── Comparison ────────────────────────────────────────────────────────────────
@@ -59,6 +68,70 @@ q_not = QBuiltin("not", monad=lambda x: QAtom(not x.value, "b")
                                if isinstance(x, QAtom)
                                else QVector(~x.series, "b"),
                  dyad=_cmp("ne"))                               # ~ in q (not / match)
+
+# ── Math keyword verbs ────────────────────────────────────────────────────────
+
+def _signum(v):
+    if v > 0: return 1
+    if v < 0: return -1
+    return 0
+
+def _math_monad(py_fn):
+    def monad(x):
+        if isinstance(x, QAtom):
+            return QAtom(py_fn(float(x.value)), "f")
+        if isinstance(x, QVector):
+            return QVector(x.series.map_elements(lambda v: py_fn(float(v)), return_dtype=pl.Float64), "f")
+        raise QTypeError("type mismatch")
+    return monad
+
+q_neg = QBuiltin("neg",
+    monad=lambda x: QAtom(-x.value, x.kind) if isinstance(x, QAtom) else QVector(-x.series, x.kind),
+    dyad=None)
+
+q_abs = QBuiltin("abs",
+    monad=lambda x: QAtom(abs(x.value), x.kind) if isinstance(x, QAtom) else QVector(x.series.abs(), x.kind),
+    dyad=None)
+
+q_signum = QBuiltin("signum",
+    monad=lambda x: QAtom(_signum(x.value), x.kind) if isinstance(x, QAtom)
+                    else QVector(x.series.map_elements(_signum, return_dtype=pl.Int64), "j"),
+    dyad=None)
+
+q_ceiling = QBuiltin("ceiling",
+    monad=lambda x: QAtom(math.ceil(x.value), "j") if isinstance(x, QAtom)
+                    else QVector(x.series.ceil().cast(pl.Int64), "j"),
+    dyad=None)
+
+q_floor = QBuiltin("floor",
+    monad=lambda x: QAtom(math.floor(x.value), "j") if isinstance(x, QAtom)
+                    else QVector(x.series.floor().cast(pl.Int64), "j"),
+    dyad=None)
+
+q_sqrt       = QBuiltin("sqrt",       monad=_math_monad(math.sqrt), dyad=None)
+q_exp        = QBuiltin("exp",        monad=_math_monad(math.exp),  dyad=None)
+q_log        = QBuiltin("log",        monad=_math_monad(math.log),  dyad=None)
+q_reciprocal = QBuiltin("reciprocal", monad=_math_monad(lambda v: 1.0 / v), dyad=None)
+
+q_xexp = QBuiltin("xexp",
+    monad=lambda x: x,
+    dyad=lambda x, y: QAtom(float(x.value) ** float(y.value), "f")
+         if isinstance(x, QAtom) and isinstance(y, QAtom) else None)
+
+q_xlog = QBuiltin("xlog",
+    monad=lambda x: x,
+    dyad=lambda x, y: QAtom(math.log(float(y.value)) / math.log(float(x.value)), "f")
+         if isinstance(x, QAtom) and isinstance(y, QAtom) else None)
+
+q_idiv = QBuiltin("idiv",
+    monad=lambda x: x,
+    dyad=lambda x, y: QAtom(int(x.value) // int(y.value), "j")
+         if isinstance(x, QAtom) and isinstance(y, QAtom) else None)
+
+q_mod = QBuiltin("mod",
+    monad=lambda x: x,
+    dyad=lambda x, y: QAtom(int(x.value) % int(y.value), "j")
+         if isinstance(x, QAtom) and isinstance(y, QAtom) else None)
 
 # ── List primitives ───────────────────────────────────────────────────────────
 
@@ -147,9 +220,15 @@ VERB_TABLE: dict[str, QBuiltin] = {
     "@": QBuiltin("index", monad=q_first_m,   dyad=lambda x,y: ...),
     ",": QBuiltin("join",  monad=lambda x: QList([x]),
                   dyad=lambda x,y: ...),
-    # named verbs
+    # named verbs — aggregations and list
     "sum": q_sum, "min": q_min, "max": q_max, "avg": q_avg,
     "dev": q_dev, "med": q_med, "count": q_count,
     "first": q_first, "last": q_last, "reverse": q_reverse,
     "where": q_where, "distinct": q_distinct, "group": q_group,
+    # math keywords
+    "neg": q_neg, "abs": q_abs, "signum": q_signum,
+    "ceiling": q_ceiling, "floor": q_floor,
+    "sqrt": q_sqrt, "exp": q_exp, "log": q_log, "reciprocal": q_reciprocal,
+    "xexp": q_xexp, "xlog": q_xlog,
+    "div": q_idiv, "mod": q_mod,
 }

@@ -543,9 +543,14 @@ def _fold_terms(terms: list) -> Any:
         return grouped[0]
 
     # Step 2: find leftmost verb (BinOp / MonOp resolution)
+    # Named dyadic keywords (e.g. `div`, `mod`, `xexp`) are treated as verbs
+    # when they appear between two terms.
+    _DYADIC_NAMED_VERBS = frozenset({"div", "mod", "xexp", "xlog"})
+
     for i, node in enumerate(grouped):
-        if isinstance(node, Verb):
-            op = node.op
+        is_named_dyadic = isinstance(node, Name) and node.name in _DYADIC_NAMED_VERBS
+        if isinstance(node, Verb) or is_named_dyadic:
+            op = node.op if isinstance(node, Verb) else node.name
             left_terms  = grouped[:i]
             right_terms = grouped[i + 1:]
 

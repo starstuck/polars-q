@@ -300,31 +300,40 @@ class TestTranspilerOutputStructure:
 
     @given(SAFE_INT)
     def test_int_lit_becomes_constant(self, v):
-        """IntLit(v) transpiles to ast.Constant(value=v)."""
+        """IntLit(v) transpiles to QAtom(v, 'j') call."""
         node = transpile_expr_node(IntLit(v))
-        assert isinstance(node, py_ast.Constant)
-        assert node.value == v
+        assert isinstance(node, py_ast.Call)
+        assert isinstance(node.func, py_ast.Name) and node.func.id == "QAtom"
+        assert node.args[0].value == v
+        assert node.args[1].value == "j"
 
     @given(SAFE_FLOAT)
     def test_float_lit_becomes_constant(self, v):
-        """FloatLit(v) transpiles to ast.Constant(value=v)."""
+        """FloatLit(v) transpiles to QAtom(v, 'f') call."""
         node = transpile_expr_node(FloatLit(v))
-        assert isinstance(node, py_ast.Constant)
-        assert node.value == v or (math.isnan(node.value) and math.isnan(v))
+        assert isinstance(node, py_ast.Call)
+        assert isinstance(node.func, py_ast.Name) and node.func.id == "QAtom"
+        raw = node.args[0].value
+        assert raw == v or (math.isnan(raw) and math.isnan(v))
+        assert node.args[1].value == "f"
 
     @given(st.booleans())
     def test_bool_lit_becomes_constant(self, v):
-        """BoolLit(v) transpiles to ast.Constant(value=v)."""
+        """BoolLit(v) transpiles to QAtom(v, 'b') call."""
         node = transpile_expr_node(BoolLit(v))
-        assert isinstance(node, py_ast.Constant)
-        assert node.value == v
+        assert isinstance(node, py_ast.Call)
+        assert isinstance(node.func, py_ast.Name) and node.func.id == "QAtom"
+        assert node.args[0].value == v
+        assert node.args[1].value == "b"
 
     @given(SYM_NAME)
     def test_sym_lit_becomes_string_constant(self, v):
-        """SymLit(v) transpiles to ast.Constant(value=v) — symbols as Python strings."""
+        """SymLit(v) transpiles to QAtom(v, 's') call."""
         node = transpile_expr_node(SymLit(v))
-        assert isinstance(node, py_ast.Constant)
-        assert node.value == v
+        assert isinstance(node, py_ast.Call)
+        assert isinstance(node.func, py_ast.Name) and node.func.id == "QAtom"
+        assert node.args[0].value == v
+        assert node.args[1].value == "s"
 
     def test_null_lit_becomes_none_constant(self):
         """NullLit() transpiles to ast.Constant(value=None)."""
@@ -367,8 +376,9 @@ class TestTranspilerOutputStructure:
         node = transpile_expr_node(BinOp(op, left, right))
         left_node  = node.args[0]
         right_node = node.args[1]
-        assert isinstance(left_node,  py_ast.Constant) and left_node.value  == left.value
-        assert isinstance(right_node, py_ast.Constant) and right_node.value == right.value
+        # left_node / right_node are now QAtom(v, kind) Call nodes
+        assert isinstance(left_node,  py_ast.Call) and left_node.args[0].value  == left.value
+        assert isinstance(right_node, py_ast.Call) and right_node.args[0].value == right.value
 
     # ── MonOp → ast.Call with one argument ───────────────────────────────────
 
@@ -755,23 +765,12 @@ class TestQRuntimeProperties:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# Known gap: transpiler emits bare Python literals, not QAtom wrappers
+# End-to-end transpiler execution tests
 # ═════════════════════════════════════════════════════════════════════════════
 
 class TestKnownGaps:
-    """
-    Documents current limitations as explicit failing / xfail tests so that
-    they show up clearly in CI and serve as targets for future work.
-    """
+    """End-to-end transpiler execution tests (formerly xfail; QAtom gap is now fixed)."""
 
-    @pytest.mark.xfail(
-        reason=(
-            "Transpiler emits q_add(1, 2) with bare Python ints. "
-            "The runtime's _arith dispatch expects QAtom/QVector, not raw int. "
-            "Fix: IntLit should transpile to QAtom(v, 'j') rather than just v."
-        ),
-        strict=True,
-    )
     @given(SAFE_INT, SAFE_INT)
     def test_transpiled_int_arithmetic_executes(self, a, b):
         """

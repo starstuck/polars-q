@@ -36,8 +36,25 @@ class QAtom:
     def __repr__(self):
         if   self.kind == "s": return f"`{self.value}"
         elif self.kind == "b": return "1b" if self.value else "0b"
-        elif self.kind == "f": return f"{self.value}f"
+        elif self.kind == "f":
+            v = self.value
+            # Match q console: 5.0 → "5f", 3.14 → "3.14f", nan → "0nf"
+            if isinstance(v, float) and v % 1 == 0 and v == v:
+                return f"{int(v)}f"
+            return f"{v}f"
         else:                  return repr(self.value)
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, QAtom): return self.value == other.value
+        return self.value == other
+
+    def __hash__(self) -> int:
+        return hash(self.value)
+
+    def __sub__(self, other):
+        """Support Python arithmetic for test assertions (e.g. abs(atom - 3.14))."""
+        if isinstance(other, QAtom): return self.value - other.value
+        return self.value - other
 
     def is_null(self) -> bool:
         if self.kind in ("f","e"): return self.value != self.value  # nan

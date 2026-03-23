@@ -70,12 +70,12 @@ LITERAL_ASSIGNMENT_CASES = [
     ),
     pytest.param(
         "x:1b",
-        lambda env: env.get("x") is True,
+        lambda env: env.get("x") == True,   # QAtom(True,'b') == True via __eq__
         id="bool-true",
     ),
     pytest.param(
         "x:0b",
-        lambda env: env.get("x") is False,
+        lambda env: env.get("x") == False,  # QAtom(False,'b') == False via __eq__
         id="bool-false",
     ),
     pytest.param(
@@ -309,15 +309,9 @@ ARITHMETIC_XFAIL_CASES = [
 
 
 class TestArithmeticXfail:
-    """
-    Arithmetic expressions that should work but are currently blocked by the
-    QAtom-wrapping gap in the transpiler.  All are marked xfail(strict=True):
-    they must fail today and will become normal passing tests once the
-    transpiler wraps literals correctly.
-    """
+    """Arithmetic expressions — QAtom-wrapping gap now fixed; all should pass."""
 
     @pytest.mark.parametrize("source,check", ARITHMETIC_XFAIL_CASES)
-    @pytest.mark.xfail(reason=_ARITH_XFAIL_REASON, strict=True)
     def test_arithmetic(self, source, check):
         env = run(source)
         assert check(env), f"check failed for: {source!r}"

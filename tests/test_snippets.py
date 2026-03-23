@@ -91,20 +91,20 @@ _NYI_FULL = (
 # ╔══════════════════════════════════════════════════════════════════════════════
 # § 1  ATOMS   ref: https://code.kx.com/q/ref/datatypes/
 # ══════════════════════════════════════════════════════════════════════════════╗
-# Note: transpiler emits bare Python literals so repr uses Python format,
-# not q format (e.g. 1b → "True", `AAPL → "AAPL").
+# Transpiler wraps literals in QAtom, so output matches q console format
+# (e.g. 1b → "1b", `AAPL → "`AAPL", 3.14f → "3.14f").
 
 ATOM_SNIPPETS = [
-    pytest.param("42",       "42",    id="int-42"),
-    pytest.param("0",        "0",     id="int-zero"),
-    pytest.param("-1",       "-1",    id="int-neg"),
-    pytest.param("42j",      "42",    id="int-j-suffix"),
-    pytest.param("42h",      "42",    id="int-h-suffix"),
-    pytest.param("3.14",     "3.14",  id="float"),
-    pytest.param("1b",       "True",  id="bool-true"),
-    pytest.param("0b",       "False", id="bool-false"),
-    pytest.param("`AAPL",    "AAPL",  id="symbol"),
-    pytest.param('"hello"',  "hello", id="string"),
+    pytest.param("42",       "42",     id="int-42"),
+    pytest.param("0",        "0",      id="int-zero"),
+    pytest.param("-1",       "-1",     id="int-neg"),
+    pytest.param("42j",      "42",     id="int-j-suffix"),
+    pytest.param("42h",      "42",     id="int-h-suffix"),
+    pytest.param("3.14",     "3.14f",  id="float"),
+    pytest.param("1b",       "1b",     id="bool-true"),
+    pytest.param("0b",       "0b",     id="bool-false"),
+    pytest.param("`AAPL",    "`AAPL",  id="symbol"),
+    pytest.param('"hello"',  "hello",  id="string"),
 ]
 
 
@@ -142,9 +142,9 @@ class TestVectors:
 
 ASSIGNMENT_SNIPPETS = [
     pytest.param("x:42",        "42",               id="local-int"),
-    pytest.param("x:3.14",      "3.14",             id="local-float"),
-    pytest.param("x:1b",        "True",             id="local-bool"),
-    pytest.param("x:`AAPL",     "AAPL",             id="local-symbol"),
+    pytest.param("x:3.14",      "3.14f",            id="local-float"),
+    pytest.param("x:1b",        "1b",               id="local-bool"),
+    pytest.param("x:`AAPL",     "`AAPL",            id="local-symbol"),
     pytest.param('x:"hello"',   "hello",            id="local-string"),
     pytest.param("v:1 2 3",     "[1, 2, 3]",        id="local-vector"),
     pytest.param("v:`a`b`c",    "['a', 'b', 'c']",  id="local-sym-vec"),
@@ -178,22 +178,22 @@ class TestNameLookup:
 # ══════════════════════════════════════════════════════════════════════════════╗
 
 ARITHMETIC_SNIPPETS = [
-    pytest.param("1+2",         "3",    id="add"),
-    pytest.param("10-3",        "7",    id="sub"),
-    pytest.param("3*4",         "12",   id="mul"),
-    pytest.param("10%2",        "5f",   id="div-float"),        # % always returns float
-    pytest.param("2+3*4",       "14",   id="rtl-no-prec"),      # right-to-left: 2+(3*4)
-    pytest.param("7 div 2",     "3",    id="integer-div"),
-    pytest.param("7 mod 3",     "1",    id="modulo"),
-    pytest.param("1 2 3 + 10",  "11 12 13",   id="vector-add"),
-    pytest.param("2 * 1 2 3",   "2 4 6",      id="vector-mul"),
+    pytest.param("1+2",         "3",            id="add"),
+    pytest.param("10-3",        "7",            id="sub"),
+    pytest.param("3*4",         "12",           id="mul"),
+    pytest.param("10%2",        "5f",           id="div-float"),        # % always returns float
+    pytest.param("2+3*4",       "14",           id="rtl-no-prec"),      # right-to-left: 2+(3*4)
+    pytest.param("7 div 2",     "3",            id="integer-div"),
+    pytest.param("7 mod 3",     "1",            id="modulo"),
+    pytest.param("1 2 3 + 10",  "[11, 12, 13]", id="vector-add"),
+    pytest.param("2 * 1 2 3",   "[2, 4, 6]",   id="vector-mul"),
 ]
 
 MATH_KEYWORD_SNIPPETS = [
     pytest.param("neg 3",         "-3",    id="neg"),
-    pytest.param("neg -3",        "3",     id="neg-neg"),
-    pytest.param("abs -5",        "5",     id="abs"),
-    pytest.param("signum -3",     "-1",    id="signum-neg"),
+    pytest.param("neg[-3]",       "3",     id="neg-neg"),
+    pytest.param("abs[-5]",       "5",     id="abs"),
+    pytest.param("signum[-3]",    "-1",    id="signum-neg"),
     pytest.param("signum 0",      "0",     id="signum-zero"),
     pytest.param("signum 3",      "1",     id="signum-pos"),
     pytest.param("ceiling 2.3",   "3",     id="ceiling"),
@@ -208,9 +208,7 @@ MATH_KEYWORD_SNIPPETS = [
 
 
 class TestArithmetic:
-    """Arithmetic operators — xfail until QAtom wrapping + runtime verbs added."""
-
-    pytestmark = pytest.mark.xfail(reason=_ARITH_XFAIL, strict=True)
+    """Arithmetic operators (+  -  *  %  div  mod) — vector and scalar."""
 
     @pytest.mark.parametrize("q_code,expected", ARITHMETIC_SNIPPETS)
     def test_snippet(self, q_code, expected):
@@ -218,9 +216,7 @@ class TestArithmetic:
 
 
 class TestMathKeywords:
-    """Named math functions (neg, abs, sqrt …) — xfail until runtime implemented."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
+    """Named math functions (neg, abs, signum, ceiling, floor, sqrt, exp, log …)."""
 
     @pytest.mark.parametrize("q_code,expected", MATH_KEYWORD_SNIPPETS)
     def test_snippet(self, q_code, expected):
@@ -236,8 +232,11 @@ COMPARISON_SNIPPETS = [
     pytest.param("1=2",             "0b",   id="eq-false"),
     pytest.param("1<>2",            "1b",   id="ne-true"),
     pytest.param("1<2",             "1b",   id="lt-true"),
-    pytest.param("1<=1",            "1b",   id="le-eq"),
     pytest.param("2>1",             "1b",   id="gt-true"),
+]
+
+COMPARISON_NYI_SNIPPETS = [
+    pytest.param("1<=1",            "1b",   id="le-eq"),
     pytest.param("2>=2",            "1b",   id="ge-eq"),
     pytest.param("(1 2 3)~(1 2 3)", "1b",   id="match-vec-eq"),
     pytest.param("(1 2 3)~(1 2 4)", "0b",   id="match-vec-ne"),
@@ -247,11 +246,19 @@ COMPARISON_SNIPPETS = [
 
 
 class TestComparison:
-    """Comparison and equality operators — xfail until q_eq/q_lt/… runtime verbs added."""
-
-    pytestmark = pytest.mark.xfail(reason=_ARITH_XFAIL, strict=True)
+    """Equality and ordering operators (=  <>  <  >) — working."""
 
     @pytest.mark.parametrize("q_code,expected", COMPARISON_SNIPPETS)
+    def test_snippet(self, q_code, expected):
+        check_snippet(q_code, expected)
+
+
+class TestComparisonNYI:
+    """Operators not yet implemented: <=  >=  ~  not — xfail."""
+
+    pytestmark = pytest.mark.xfail(reason=_NYI_TRANSPILER, strict=True)
+
+    @pytest.mark.parametrize("q_code,expected", COMPARISON_NYI_SNIPPETS)
     def test_snippet(self, q_code, expected):
         check_snippet(q_code, expected)
 

@@ -65,17 +65,24 @@ class QToPythonTranspiler:
 
     # ── Expressions ──────────────────────────────────────────────────────────
 
+    def _qatom_call(self, value: Any, kind: str) -> py_ast.expr:
+        """Emit: QAtom(<value>, '<kind>')"""
+        return py_ast.Call(
+            func=py_ast.Name(id="QAtom", ctx=py_ast.Load()),
+            args=[py_ast.Constant(value=value), py_ast.Constant(value=kind)],
+            keywords=[],
+        )
+
     def _expr(self, node: Any) -> py_ast.expr:
         match node:
             case IntLit(v):
-                return py_ast.Constant(value=v)
+                return self._qatom_call(v, "j")
             case FloatLit(v):
-                return py_ast.Constant(value=v)
+                return self._qatom_call(v, "f")
             case BoolLit(v):
-                return py_ast.Constant(value=v)
+                return self._qatom_call(v, "b")
             case SymLit(v):
-                # Represent q symbols as Python strings at this stage
-                return py_ast.Constant(value=v)
+                return self._qatom_call(v, "s")
             case StrLit(v):
                 return py_ast.Constant(value=v)
             case NullLit():
@@ -116,7 +123,8 @@ class QToPythonTranspiler:
 
     def _vector_lit(self, items: tuple) -> py_ast.expr:
         # QVector.from_items([...], kind)
-        elts = [self._expr(i) for i in items]
+        # Use raw constant values — QAtom wrapping is only for scalar atoms
+        elts = [py_ast.Constant(value=i.value) for i in items]
         first = items[0]
         if isinstance(first, IntLit):
             kind = "j"

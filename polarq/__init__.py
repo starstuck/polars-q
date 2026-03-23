@@ -27,7 +27,31 @@ from polarq.types     import (QAtom, QVector, QList, QDict,
                                QTable, QKeyedTable, QLambda,
                                QBuiltin, QAdverb, QNull, qnull)
 from polarq.env       import QEnv
-from polarq.verbs     import VERB_TABLE
+from polarq.verbs     import (
+    VERB_TABLE,
+    q_add, q_sub, q_mul, q_div,
+    q_lt, q_gt, q_eq, q_not,
+    q_sum, q_min, q_max, q_avg, q_dev, q_med,
+    q_count, q_first, q_last, q_reverse, q_where, q_distinct, q_group,
+    q_neg, q_abs, q_signum, q_ceiling, q_floor,
+    q_sqrt, q_exp, q_log, q_reciprocal, q_xexp, q_xlog,
+    q_idiv, q_mod,
+)
+
+# Named keyword aliases — transpiled q code uses bare names like `neg x`, `abs x`
+neg        = q_neg
+abs        = q_abs  # shadows Python builtin intentionally in q exec context
+signum     = q_signum
+ceiling    = q_ceiling
+floor      = q_floor
+sqrt       = q_sqrt
+exp        = q_exp
+log        = q_log
+reciprocal = q_reciprocal
+xexp       = q_xexp
+xlog       = q_xlog
+div        = q_idiv
+mod        = q_mod
 from polarq.adverbs   import over, scan, each, each_left, each_right
 from polarq.tables    import compile_select, compile_update, compile_aj, compile_wj
 from polarq.temporal  import from_q_timestamp, to_q_timestamp, timestamp_series
@@ -63,4 +87,16 @@ __all__ = [
     "over", "scan", "each", "each_left", "each_right",
     "compile_select", "compile_update", "compile_aj", "compile_wj",
     "QError", "QTypeError", "QLengthError", "QRankError",
+    # verb functions (for transpiled code: `from polarq import *`)
+    "q_add", "q_sub", "q_mul", "q_div",
+    "q_lt", "q_gt", "q_eq", "q_not",
+    "q_sum", "q_min", "q_max", "q_avg", "q_dev", "q_med",
+    "q_count", "q_first", "q_last", "q_reverse", "q_where", "q_distinct", "q_group",
+    "q_neg", "q_abs", "q_signum", "q_ceiling", "q_floor",
+    "q_sqrt", "q_exp", "q_log", "q_reciprocal", "q_xexp", "q_xlog",
+    "q_idiv", "q_mod",
+    # keyword aliases
+    "neg", "abs", "signum", "ceiling", "floor",
+    "sqrt", "exp", "log", "reciprocal", "xexp", "xlog",
+    "div", "mod",
 ]
