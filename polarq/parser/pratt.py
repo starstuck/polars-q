@@ -75,6 +75,11 @@ _VERB_TOKENS: dict[TT, str] = {
     TT.LT:      "<",
     TT.GT:      ">",
     TT.EQ:      "=",
+    TT.LE:      "<=",
+    TT.GE:      ">=",
+    TT.KW_NOT:  "not",
+    TT.KW_ALL:  "all",
+    TT.KW_ANY:  "any",
     TT.COLON:   ":",
 }
 
@@ -96,7 +101,8 @@ _EXPR_START = frozenset({
     # Verbs can start a monadic expression
     TT.PLUS, TT.MINUS, TT.STAR, TT.PERCENT, TT.BANG, TT.HASH,
     TT.UNDER, TT.TILDE, TT.AT, TT.COMMA, TT.CARET, TT.DOLLAR,
-    TT.AMP, TT.PIPE, TT.LT, TT.GT, TT.EQ,
+    TT.AMP, TT.PIPE, TT.LT, TT.GT, TT.EQ, TT.LE, TT.GE,
+    TT.KW_NOT, TT.KW_ALL, TT.KW_ANY,
 })
 
 # Literal node types that can be grouped into a VectorLit
@@ -579,6 +585,10 @@ def _group_literals(terms: list) -> list:
     """
     Merge runs of same-kind scalar literals (IntLit, FloatLit, BoolLit, SymLit)
     into VectorLit nodes.  Mixed runs or single-element runs are left alone.
+
+    Special case: a run of IntLit values immediately followed by a BoolLit (or
+    a run starting with IntLit where any element is BoolLit) is treated as a
+    boolean vector — in q, `0 0 1b` means the boolean vector 0b 0b 1b.
     """
     out = []
     i   = 0
@@ -593,6 +603,13 @@ def _group_literals(terms: list) -> list:
         while j < len(terms) and type(terms[j]) is type(t):
             j += 1
         run = terms[i:j]
+        # If this is a run of IntLit and the very next item is a BoolLit,
+        # absorb it: the trailing `b` suffix coerces the whole run to boolean.
+        if (run and isinstance(run[0], IntLit)
+                and j < len(terms) and isinstance(terms[j], BoolLit)):
+            run = run + [terms[j]]
+            j += 1
+            run = [BoolLit(bool(n.value)) for n in run]
         if len(run) > 1:
             out.append(VectorLit(tuple(run)))
         else:

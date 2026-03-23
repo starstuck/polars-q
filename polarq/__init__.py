@@ -30,7 +30,8 @@ from polarq.env       import QEnv
 from polarq.verbs     import (
     VERB_TABLE,
     q_add, q_sub, q_mul, q_div,
-    q_lt, q_gt, q_eq, q_not,
+    q_lt, q_gt, q_eq, q_le, q_ge, q_not,
+    q_and, q_or, q_all, q_any,
     q_sum, q_min, q_max, q_avg, q_dev, q_med,
     q_count, q_first, q_last, q_reverse, q_where, q_distinct, q_group,
     q_neg, q_abs, q_signum, q_ceiling, q_floor,
@@ -89,7 +90,8 @@ __all__ = [
     "QError", "QTypeError", "QLengthError", "QRankError",
     # verb functions (for transpiled code: `from polarq import *`)
     "q_add", "q_sub", "q_mul", "q_div",
-    "q_lt", "q_gt", "q_eq", "q_not",
+    "q_lt", "q_gt", "q_eq", "q_le", "q_ge", "q_not",
+    "q_and", "q_or", "q_all", "q_any",
     "q_sum", "q_min", "q_max", "q_avg", "q_dev", "q_med",
     "q_count", "q_first", "q_last", "q_reverse", "q_where", "q_distinct", "q_group",
     "q_neg", "q_abs", "q_signum", "q_ceiling", "q_floor",

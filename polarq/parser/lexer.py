@@ -48,6 +48,9 @@ class TT(Enum):
     KW_FROM  = auto()
     KW_WHERE = auto()
     KW_BY    = auto()
+    KW_NOT   = auto()
+    KW_ALL   = auto()
+    KW_ANY   = auto()
     # Structural
     LPAREN   = auto()   # (
     RPAREN   = auto()   # )
@@ -76,6 +79,8 @@ class TT(Enum):
     LT      = auto()   # <
     GT      = auto()   # >
     EQ      = auto()   # =
+    LE      = auto()   # <=
+    GE      = auto()   # >=
     # Adverbs
     ADVERB_OVER      = auto()   # /
     ADVERB_SCAN      = auto()   # \  (when not followed by :)
@@ -95,6 +100,9 @@ KEYWORDS: dict[str, TT] = {
     "from":   TT.KW_FROM,
     "where":  TT.KW_WHERE,
     "by":     TT.KW_BY,
+    "not":    TT.KW_NOT,
+    "all":    TT.KW_ALL,
+    "any":    TT.KW_ANY,
 }
 
 # Token types that represent "value-like" tokens after which a `-` that is
@@ -180,6 +188,8 @@ _RAW_PATTERNS: list[tuple[TT | None, str]] = [
     (TT.DOLLAR,  r"\$"),
     (TT.AMP,     r"&"),
     (TT.PIPE,    r"\|"),
+    (TT.LE,      r"<="),
+    (TT.GE,      r">="),
     (TT.LT,      r"<"),
     (TT.GT,      r">"),
     (TT.EQ,      r"="),

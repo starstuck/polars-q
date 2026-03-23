@@ -233,32 +233,25 @@ COMPARISON_SNIPPETS = [
     pytest.param("1<>2",            "1b",   id="ne-true"),
     pytest.param("1<2",             "1b",   id="lt-true"),
     pytest.param("2>1",             "1b",   id="gt-true"),
-]
-
-COMPARISON_NYI_SNIPPETS = [
     pytest.param("1<=1",            "1b",   id="le-eq"),
+    pytest.param("1<=2",            "1b",   id="le-lt"),
+    pytest.param("2<=1",            "0b",   id="le-gt"),
     pytest.param("2>=2",            "1b",   id="ge-eq"),
+    pytest.param("2>=1",            "1b",   id="ge-gt"),
+    pytest.param("1>=2",            "0b",   id="ge-lt"),
     pytest.param("(1 2 3)~(1 2 3)", "1b",   id="match-vec-eq"),
     pytest.param("(1 2 3)~(1 2 4)", "0b",   id="match-vec-ne"),
     pytest.param("not 1b",          "0b",   id="not-true"),
     pytest.param("not 0b",          "1b",   id="not-false"),
 ]
 
+COMPARISON_NYI_SNIPPETS: list = []
+
 
 class TestComparison:
-    """Equality and ordering operators (=  <>  <  >) — working."""
+    """Equality and ordering operators (=  <>  <  >  <=  >=  ~  not) — working."""
 
     @pytest.mark.parametrize("q_code,expected", COMPARISON_SNIPPETS)
-    def test_snippet(self, q_code, expected):
-        check_snippet(q_code, expected)
-
-
-class TestComparisonNYI:
-    """Operators not yet implemented: <=  >=  ~  not — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_TRANSPILER, strict=True)
-
-    @pytest.mark.parametrize("q_code,expected", COMPARISON_NYI_SNIPPETS)
     def test_snippet(self, q_code, expected):
         check_snippet(q_code, expected)
 
@@ -282,9 +275,7 @@ LOGIC_SNIPPETS = [
 
 
 class TestLogic:
-    """Logical and bitwise operators (& | all any) — xfail until transpiler/runtime added."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_TRANSPILER, strict=True)
+    """Logical and bitwise operators (& | all any) — working."""
 
     @pytest.mark.parametrize("q_code,expected", LOGIC_SNIPPETS)
     def test_snippet(self, q_code, expected):

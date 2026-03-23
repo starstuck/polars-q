@@ -51,7 +51,8 @@ q_div = QBuiltin("div",
 # ── Comparison ────────────────────────────────────────────────────────────────
 
 def _cmp(op_name):
-    OPS = {"lt": "__lt__", "gt": "__gt__", "eq": "__eq__", "ne": "__ne__"}
+    OPS = {"lt": "__lt__", "gt": "__gt__", "eq": "__eq__", "ne": "__ne__",
+           "le": "__le__", "ge": "__ge__"}
     def dyad(x, y):
         x, y = promote(x, y)
         if isinstance(x, QAtom) and isinstance(y, QAtom):
@@ -61,13 +62,63 @@ def _cmp(op_name):
             return QVector(s, "b")
     return dyad
 
+def _match(x, y):
+    """Structural equality — always returns a scalar boolean atom."""
+    if isinstance(x, QAtom) and isinstance(y, QAtom):
+        return QAtom(x.value == y.value, "b")
+    if isinstance(x, QVector) and isinstance(y, QVector):
+        if len(x.series) != len(y.series):
+            return QAtom(False, "b")
+        return QAtom(bool((x.series == y.series).all()), "b")
+    return QAtom(False, "b")
+
 q_lt  = QBuiltin("lt",  monad=lambda x: x, dyad=_cmp("lt"))
 q_gt  = QBuiltin("gt",  monad=lambda x: x, dyad=_cmp("gt"))
 q_eq  = QBuiltin("eq",  monad=lambda x: x, dyad=_cmp("eq"))  # = in q
+q_le  = QBuiltin("le",  monad=lambda x: x, dyad=_cmp("le"))  # <= in q
+q_ge  = QBuiltin("ge",  monad=lambda x: x, dyad=_cmp("ge"))  # >= in q
 q_not = QBuiltin("not", monad=lambda x: QAtom(not x.value, "b")
                                if isinstance(x, QAtom)
                                else QVector(~x.series, "b"),
-                 dyad=_cmp("ne"))                               # ~ in q (not / match)
+                 dyad=_match)                                  # ~ dyadic = structural match
+
+# ── Logic / bitwise (& = min/and, | = max/or) ─────────────────────────────────
+
+def _and_dyad(x, y):
+    x, y = promote(x, y)
+    if isinstance(x, QAtom) and isinstance(y, QAtom):
+        return QAtom(min(x.value, y.value), unify_kind(x.kind, y.kind))
+    if isinstance(x, QVector) and isinstance(y, QVector):
+        return QVector(pl.min_horizontal(x.series, y.series), unify_kind(x.kind, y.kind))
+    raise QTypeError("type mismatch")
+
+def _or_dyad(x, y):
+    x, y = promote(x, y)
+    if isinstance(x, QAtom) and isinstance(y, QAtom):
+        return QAtom(max(x.value, y.value), unify_kind(x.kind, y.kind))
+    if isinstance(x, QVector) and isinstance(y, QVector):
+        return QVector(pl.max_horizontal(x.series, y.series), unify_kind(x.kind, y.kind))
+    raise QTypeError("type mismatch")
+
+q_and = QBuiltin("and", monad=lambda x: x, dyad=_and_dyad)  # & = min/and
+q_or  = QBuiltin("or",  monad=lambda x: x, dyad=_or_dyad)   # | = max/or
+
+def _all_m(x):
+    if isinstance(x, QVector):
+        return QAtom(bool(x.series.cast(pl.Boolean).all()), "b")
+    if isinstance(x, QAtom):
+        return QAtom(bool(x.value), "b")
+    raise QTypeError("all expects vector")
+
+def _any_m(x):
+    if isinstance(x, QVector):
+        return QAtom(bool(x.series.cast(pl.Boolean).any()), "b")
+    if isinstance(x, QAtom):
+        return QAtom(bool(x.value), "b")
+    raise QTypeError("any expects vector")
+
+q_all = QBuiltin("all", monad=_all_m, dyad=None)
+q_any = QBuiltin("any", monad=_any_m, dyad=None)
 
 # ── Math keyword verbs ────────────────────────────────────────────────────────
 
@@ -213,6 +264,9 @@ q_med = QBuiltin("med", monad=lambda x: QAtom(x.series.median(), "f")
 VERB_TABLE: dict[str, QBuiltin] = {
     "+": q_add,  "-": q_sub,  "*": q_mul,  "%": q_div,
     "<": q_lt,   ">": q_gt,   "=": q_eq,   "~": q_not,
+    "<=": q_le,  ">=": q_ge,
+    "&": q_and,  "|": q_or,
+    "all": q_all, "any": q_any,
     "#": QBuiltin("take",  monad=q_count_m,   dyad=lambda x,y: ...),
     "_": QBuiltin("drop",  monad=q_first_m,   dyad=lambda x,y: ...),
     "!": QBuiltin("key",   monad=q_group_m,   dyad=lambda x,y: ...),
