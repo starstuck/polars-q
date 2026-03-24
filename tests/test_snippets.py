@@ -295,16 +295,14 @@ STRING_SNIPPETS = [
     pytest.param('ltrim "  hi"',       '"hi"',         id="ltrim"),
     pytest.param('rtrim "hi  "',       '"hi"',         id="rtrim"),
     pytest.param('"hello" like "h*"',  "1b",           id="like-glob"),
-    pytest.param('"hello" ss "l"',     "2 3",          id="ss-positions"),
+    pytest.param('"hello" ss "l"',     "[2, 3]",       id="ss-positions"),
     pytest.param('"," sv "a","b","c"', '"a,b,c"',      id="sv-join"),
     pytest.param('"," vs "a,b,c"',     '"a" "b" "c"',  id="vs-split"),
 ]
 
 
 class TestStrings:
-    """String functions — xfail until implemented."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
+    """String functions — working."""
 
     @pytest.mark.parametrize("q_code,expected", STRING_SNIPPETS)
     def test_snippet(self, q_code, expected):

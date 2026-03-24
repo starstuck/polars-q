@@ -2,6 +2,7 @@ from polarq.types import *
 from polarq.coerce import promote, unify_kind
 import polars as pl
 import math
+import fnmatch
 
 def _arith(polars_op, py_op):
     """
@@ -259,6 +260,94 @@ q_dev = QBuiltin("dev", monad=lambda x: QAtom(x.series.std(), "f")
 q_med = QBuiltin("med", monad=lambda x: QAtom(x.series.median(), "f")
                                if isinstance(x, QVector) else x, dyad=None)
 
+# ── String verbs ──────────────────────────────────────────────────────────────
+
+def _str_val(x) -> str:
+    """Extract a Python str from QAtom('c') or raw Python str."""
+    if isinstance(x, str): return x
+    if isinstance(x, QAtom): return str(x.value)
+    raise QTypeError("type")
+
+def _q_string_m(x) -> QAtom:
+    if isinstance(x, QAtom):
+        if x.kind == "s": v = x.value
+        elif x.kind == "b": v = "1" if x.value else "0"
+        elif x.kind == "f":
+            v = str(int(x.value)) if x.value % 1 == 0 else str(x.value)
+        else: v = str(x.value)
+        return QAtom(v, "c")
+    if isinstance(x, str): return QAtom(x, "c")
+    raise QTypeError("string: unsupported type")
+
+def _str_monad(fn):
+    def monad(x):
+        return QAtom(fn(_str_val(x)), "c")
+    return monad
+
+q_string = QBuiltin("string", monad=_q_string_m, dyad=None)
+q_lower  = QBuiltin("lower",  monad=_str_monad(str.lower),  dyad=None)
+q_upper  = QBuiltin("upper",  monad=_str_monad(str.upper),  dyad=None)
+q_trim   = QBuiltin("trim",   monad=_str_monad(str.strip),  dyad=None)
+q_ltrim  = QBuiltin("ltrim",  monad=_str_monad(str.lstrip), dyad=None)
+q_rtrim  = QBuiltin("rtrim",  monad=_str_monad(str.rstrip), dyad=None)
+
+def _like_dyad(x, y) -> QAtom:
+    s, pat = _str_val(x), _str_val(y)
+    return QAtom(fnmatch.fnmatch(s, pat), "b")
+
+def _ss_dyad(x, y) -> QVector:
+    """Find all start positions of y in x (0-indexed)."""
+    s, sub = _str_val(x), _str_val(y)
+    if not sub:
+        return QVector(pl.Series(values=[], dtype=pl.Int64), "j")
+    positions, pos = [], 0
+    while True:
+        idx = s.find(sub, pos)
+        if idx == -1:
+            break
+        positions.append(idx)
+        pos = idx + 1
+    return QVector(pl.Series(values=positions, dtype=pl.Int64), "j")
+
+def _sv_dyad(x, y) -> QAtom:
+    """Delimiter sv string: join chars/strings with delimiter."""
+    delim = _str_val(x)
+    if isinstance(y, str):
+        return QAtom(delim.join(y), "c")           # join chars of string
+    if isinstance(y, QAtom) and y.kind == "c":
+        return QAtom(delim.join(y.value), "c")
+    if isinstance(y, QVector) and y.kind == "c":
+        return QAtom(delim.join(y.series.to_list()), "c")
+    if isinstance(y, QList):
+        return QAtom(delim.join(_str_val(i) for i in y.items), "c")
+    raise QTypeError("sv: right arg must be string or list of strings")
+
+def _vs_dyad(x, y) -> QVector:
+    """Delimiter vs string: split string by delimiter."""
+    delim, s = _str_val(x), _str_val(y)
+    parts = s.split(delim)
+    return QVector(pl.Series(values=parts, dtype=pl.Utf8), "c")
+
+def _join_dyad(x, y):
+    if isinstance(x, str) and isinstance(y, str):
+        return x + y
+    if isinstance(x, QAtom) and isinstance(y, QAtom) and x.kind == "c" == y.kind:
+        return QAtom(x.value + y.value, "c")
+    if isinstance(x, (QAtom, str)) and isinstance(y, (QAtom, str)):
+        return QAtom(_str_val(x) + _str_val(y), "c")
+    if isinstance(x, QVector) and isinstance(y, QVector) and x.kind == y.kind:
+        return QVector(pl.concat([x.series, y.series]), x.kind)
+    lhs = x.items if isinstance(x, QList) else [x]
+    rhs = y.items if isinstance(y, QList) else [y]
+    return QList(lhs + rhs)
+
+q_join = QBuiltin("join", monad=lambda x: QList([x]), dyad=_join_dyad)
+
+q_like = QBuiltin("like", monad=lambda x: x, dyad=_like_dyad)
+q_ss   = QBuiltin("ss",   monad=lambda x: x, dyad=_ss_dyad)
+q_sv   = QBuiltin("sv",   monad=lambda x: x, dyad=_sv_dyad)
+q_vs   = QBuiltin("vs",   monad=lambda x: x, dyad=_vs_dyad)
+
 # ── The global verb table (maps q token → QBuiltin) ───────────────────────────
 
 VERB_TABLE: dict[str, QBuiltin] = {
@@ -272,8 +361,11 @@ VERB_TABLE: dict[str, QBuiltin] = {
     "!": QBuiltin("key",   monad=q_group_m,   dyad=lambda x,y: ...),
     "?": QBuiltin("find",  monad=q_distinct_m,dyad=lambda x,y: ...),
     "@": QBuiltin("index", monad=q_first_m,   dyad=lambda x,y: ...),
-    ",": QBuiltin("join",  monad=lambda x: QList([x]),
-                  dyad=lambda x,y: ...),
+    ",": q_join,
+    # string verbs
+    "string": q_string, "lower": q_lower, "upper": q_upper,
+    "trim": q_trim, "ltrim": q_ltrim, "rtrim": q_rtrim,
+    "like": q_like, "ss": q_ss, "sv": q_sv, "vs": q_vs,
     # named verbs — aggregations and list
     "sum": q_sum, "min": q_min, "max": q_max, "avg": q_avg,
     "dev": q_dev, "med": q_med, "count": q_count,

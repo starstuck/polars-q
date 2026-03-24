@@ -36,6 +36,7 @@ class QAtom:
     def __repr__(self):
         if   self.kind == "s": return f"`{self.value}"
         elif self.kind == "b": return "1b" if self.value else "0b"
+        elif self.kind == "c": return f'"{self.value}"'
         elif self.kind == "f":
             v = self.value
             # Match q console: 5.0 → "5f", 3.14 → "3.14f", nan → "0nf"
@@ -90,7 +91,10 @@ class QVector:
         return cls(s, kind)
 
     def __len__(self):     return len(self.series)
-    def __repr__(self):    return repr(list(self.series))
+    def __repr__(self):
+        if self.kind == "c":
+            return " ".join(f'"{v}"' for v in self.series)
+        return repr(list(self.series))
 
     # q-style indexing: v[2], v[0 1 2], v[::] (elision)
     def __getitem__(self, idx):

@@ -32,6 +32,8 @@ from polarq.verbs     import (
     q_add, q_sub, q_mul, q_div,
     q_lt, q_gt, q_eq, q_le, q_ge, q_not,
     q_and, q_or, q_all, q_any,
+    q_string, q_lower, q_upper, q_trim, q_ltrim, q_rtrim,
+    q_like, q_ss, q_sv, q_vs, q_join,
     q_sum, q_min, q_max, q_avg, q_dev, q_med,
     q_count, q_first, q_last, q_reverse, q_where, q_distinct, q_group,
     q_neg, q_abs, q_signum, q_ceiling, q_floor,
@@ -53,6 +55,12 @@ xexp       = q_xexp
 xlog       = q_xlog
 div        = q_idiv
 mod        = q_mod
+string     = q_string
+lower      = q_lower
+upper      = q_upper
+trim       = q_trim
+ltrim      = q_ltrim
+rtrim      = q_rtrim
 from polarq.adverbs   import over, scan, each, each_left, each_right
 from polarq.tables    import compile_select, compile_update, compile_aj, compile_wj
 from polarq.temporal  import from_q_timestamp, to_q_timestamp, timestamp_series
@@ -92,6 +100,8 @@ __all__ = [
     "q_add", "q_sub", "q_mul", "q_div",
     "q_lt", "q_gt", "q_eq", "q_le", "q_ge", "q_not",
     "q_and", "q_or", "q_all", "q_any",
+    "q_string", "q_lower", "q_upper", "q_trim", "q_ltrim", "q_rtrim",
+    "q_like", "q_ss", "q_sv", "q_vs", "q_join",
     "q_sum", "q_min", "q_max", "q_avg", "q_dev", "q_med",
     "q_count", "q_first", "q_last", "q_reverse", "q_where", "q_distinct", "q_group",
     "q_neg", "q_abs", "q_signum", "q_ceiling", "q_floor",
@@ -101,4 +111,5 @@ __all__ = [
     "neg", "abs", "signum", "ceiling", "floor",
     "sqrt", "exp", "log", "reciprocal", "xexp", "xlog",
     "div", "mod",
+    "string", "lower", "upper", "trim", "ltrim", "rtrim",
 ]
