@@ -39,10 +39,8 @@ class QAtom:
         elif self.kind == "c": return f'"{self.value}"'
         elif self.kind == "f":
             v = self.value
-            # Match q console: 5.0 → "5f", 3.14 → "3.14f", nan → "0nf"
-            if isinstance(v, float) and v % 1 == 0 and v == v:
-                return f"{int(v)}f"
-            return f"{v}f"
+            if v != v: return "0nf"          # nan
+            return f"{v:.4g}f"               # 4 sig figs, matches q console
         else:                  return repr(self.value)
 
     def __eq__(self, other) -> bool:
@@ -112,7 +110,7 @@ class QList:
     items: list
 
     def __len__(self):  return len(self.items)
-    def __repr__(self): return f"({';'.join(repr(i) for i in self.items)})"
+    def __repr__(self): return repr(self.items)
 
 # ── Dict & Table ──────────────────────────────────────────────────────────────
 

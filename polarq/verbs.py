@@ -3,6 +3,9 @@ from polarq.coerce import promote, unify_kind
 import polars as pl
 import math
 import fnmatch
+import functools
+import operator
+import bisect
 
 def _arith(polars_op, py_op):
     """
@@ -240,6 +243,20 @@ q_where   = QBuiltin("where",   monad=q_where_m,   dyad=None)
 q_distinct= QBuiltin("distinct",monad=q_distinct_m, dyad=None)
 q_group   = QBuiltin("group",   monad=q_group_m,   dyad=None)
 
+def q_til_m(x):
+    n = x.value if isinstance(x, QAtom) else int(x)
+    return QVector(pl.Series(values=list(range(n)), dtype=pl.Int64), "j")
+
+def q_raze_m(x):
+    items = x.items if isinstance(x, QList) else (x if isinstance(x, list) else [x])
+    if items and all(isinstance(i, QVector) for i in items):
+        return QVector(pl.concat([i.series for i in items]), items[0].kind)
+    return QList(items)
+
+q_til    = QBuiltin("til",    monad=q_til_m,            dyad=None)
+q_enlist = QBuiltin("enlist", monad=lambda x: QList([x]), dyad=None)
+q_raze   = QBuiltin("raze",   monad=q_raze_m,           dyad=None)
+
 # ── Aggregation builtins (also used in qSQL compiler) ─────────────────────────
 
 def _agg(series_method, py_fn):
@@ -255,10 +272,133 @@ q_min = QBuiltin("min", monad=_agg("min", min), dyad=None)
 q_max = QBuiltin("max", monad=_agg("max", max), dyad=None)
 q_avg = QBuiltin("avg", monad=lambda x: QAtom(x.series.mean(), "f")
                                if isinstance(x, QVector) else x, dyad=None)
-q_dev = QBuiltin("dev", monad=lambda x: QAtom(x.series.std(), "f")
+q_dev = QBuiltin("dev", monad=lambda x: QAtom(x.series.std(ddof=0), "f")
                                if isinstance(x, QVector) else x, dyad=None)
 q_med = QBuiltin("med", monad=lambda x: QAtom(x.series.median(), "f")
                                if isinstance(x, QVector) else x, dyad=None)
+q_prd = QBuiltin("prd", monad=lambda x: QAtom(
+                               functools.reduce(operator.mul, x.series.to_list(), 1), x.kind)
+                               if isinstance(x, QVector) else x, dyad=None)
+q_var = QBuiltin("var", monad=lambda x: QAtom(x.series.var(ddof=0), "f")
+                               if isinstance(x, QVector) else x, dyad=None)
+
+# ── Running / cumulative aggregations ─────────────────────────────────────────
+
+q_sums = QBuiltin("sums", monad=lambda x: QVector(x.series.cum_sum(), x.kind)
+                                if isinstance(x, QVector) else x, dyad=None)
+q_prds = QBuiltin("prds", monad=lambda x: QVector(x.series.cum_prod(), x.kind)
+                                if isinstance(x, QVector) else x, dyad=None)
+q_maxs = QBuiltin("maxs", monad=lambda x: QVector(x.series.cum_max(), x.kind)
+                                if isinstance(x, QVector) else x, dyad=None)
+q_mins = QBuiltin("mins", monad=lambda x: QVector(x.series.cum_min(), x.kind)
+                                if isinstance(x, QVector) else x, dyad=None)
+
+def _q_avgs_m(x):
+    if isinstance(x, QVector):
+        s = x.series.cast(pl.Float64)
+        n = pl.Series(list(range(1, len(s) + 1)), dtype=pl.Float64)
+        return QVector(s.cum_sum() / n, "f")
+    return x
+
+def _q_deltas_m(x):
+    if isinstance(x, QVector):
+        s = x.series
+        return QVector(s.diff(n=1).fill_null(int(s[0])), x.kind)
+    return x
+
+def _q_ratios_m(x):
+    if isinstance(x, QVector):
+        s = x.series.cast(pl.Float64)
+        return QVector((s / s.shift(1)).fill_null(1.0), "f")
+    return x
+
+def _q_differ_m(x):
+    if isinstance(x, QVector):
+        s = x.series
+        return QVector((s != s.shift(1)).fill_null(True), "b")
+    return x
+
+q_avgs   = QBuiltin("avgs",   monad=_q_avgs_m,   dyad=None)
+q_deltas = QBuiltin("deltas", monad=_q_deltas_m, dyad=None)
+q_ratios = QBuiltin("ratios", monad=_q_ratios_m, dyad=None)
+q_differ = QBuiltin("differ", monad=_q_differ_m, dyad=None)
+
+# ── Moving-window aggregations ─────────────────────────────────────────────────
+
+def _win(n):
+    return n.value if isinstance(n, QAtom) else int(n)
+
+def _q_msum_d(n, x):
+    return QVector(x.series.rolling_sum(window_size=_win(n), min_samples=1), x.kind)
+
+def _q_mavg_d(n, x):
+    return QVector(x.series.cast(pl.Float64).rolling_mean(window_size=_win(n), min_samples=1), "f")
+
+def _q_mmin_d(n, x):
+    return QVector(x.series.rolling_min(window_size=_win(n), min_samples=1), x.kind)
+
+def _q_mmax_d(n, x):
+    return QVector(x.series.rolling_max(window_size=_win(n), min_samples=1), x.kind)
+
+def _q_mdev_d(n, x):
+    result = x.series.cast(pl.Float64).rolling_std(
+        window_size=_win(n), min_samples=1, ddof=0).round(4)
+    return QVector(result, "f")
+
+def _q_ema_d(alpha, x):
+    a = alpha.value if isinstance(alpha, QAtom) else float(alpha)
+    return QVector(x.series.cast(pl.Float64).ewm_mean(alpha=a, adjust=False), "f")
+
+q_msum = QBuiltin("msum", monad=lambda x: x, dyad=_q_msum_d)
+q_mavg = QBuiltin("mavg", monad=lambda x: x, dyad=_q_mavg_d)
+q_mmin = QBuiltin("mmin", monad=lambda x: x, dyad=_q_mmin_d)
+q_mmax = QBuiltin("mmax", monad=lambda x: x, dyad=_q_mmax_d)
+q_mdev = QBuiltin("mdev", monad=lambda x: x, dyad=_q_mdev_d)
+q_ema  = QBuiltin("ema",  monad=lambda x: x, dyad=_q_ema_d)
+
+# ── Bucketing ─────────────────────────────────────────────────────────────────
+
+def _q_xbar_d(n, x):
+    nv = n.value if isinstance(n, QAtom) else int(n)
+    if isinstance(x, QAtom):
+        return QAtom((x.value // nv) * nv, x.kind)
+    if isinstance(x, QVector):
+        return QVector((x.series // nv) * nv, x.kind)
+    raise QTypeError("xbar: right arg must be atom or vector")
+
+def _q_bin_d(x, y):
+    if isinstance(x, QVector):
+        lst = x.series.to_list()
+        v = y.value if isinstance(y, QAtom) else float(y)
+        return QAtom(bisect.bisect_right(lst, v) - 1, "j")
+    raise QTypeError("bin: left arg must be vector")
+
+def _q_wavg_d(x, y):
+    if not isinstance(y, QVector):
+        raise QTypeError("wavg: right arg must be vector")
+    y_s = y.series.cast(pl.Float64)
+    if isinstance(x, QAtom):
+        x_val = float(x.value)
+        return QAtom(float((y_s * x_val).sum()) / x_val, "f")
+    if isinstance(x, QVector):
+        x_s = x.series.cast(pl.Float64)
+        return QAtom(float((x_s * y_s).sum()) / float(x_s.sum()), "f")
+    raise QTypeError("wavg: left arg must be atom or vector")
+
+def _q_wsum_d(x, y):
+    if isinstance(x, QVector) and isinstance(y, QVector):
+        x_s = x.series.cast(pl.Float64)
+        y_s = y.series.cast(pl.Float64)
+        result = float((x_s * y_s).sum())
+        if result == int(result):
+            return QAtom(int(result), "j")
+        return QAtom(result, "f")
+    raise QTypeError("wsum: both args must be vectors")
+
+q_xbar = QBuiltin("xbar", monad=lambda x: x, dyad=_q_xbar_d)
+q_bin  = QBuiltin("bin",  monad=lambda x: x, dyad=_q_bin_d)
+q_wavg = QBuiltin("wavg", monad=lambda x: x, dyad=_q_wavg_d)
+q_wsum = QBuiltin("wsum", monad=lambda x: x, dyad=_q_wsum_d)
 
 # ── String verbs ──────────────────────────────────────────────────────────────
 
@@ -366,11 +506,21 @@ VERB_TABLE: dict[str, QBuiltin] = {
     "string": q_string, "lower": q_lower, "upper": q_upper,
     "trim": q_trim, "ltrim": q_ltrim, "rtrim": q_rtrim,
     "like": q_like, "ss": q_ss, "sv": q_sv, "vs": q_vs,
-    # named verbs — aggregations and list
+    # named verbs — core list
+    "til": q_til, "enlist": q_enlist, "raze": q_raze,
+    "count": q_count, "first": q_first, "last": q_last,
+    "reverse": q_reverse, "where": q_where, "distinct": q_distinct, "group": q_group,
+    # named verbs — aggregations
     "sum": q_sum, "min": q_min, "max": q_max, "avg": q_avg,
-    "dev": q_dev, "med": q_med, "count": q_count,
-    "first": q_first, "last": q_last, "reverse": q_reverse,
-    "where": q_where, "distinct": q_distinct, "group": q_group,
+    "dev": q_dev, "med": q_med, "prd": q_prd, "var": q_var,
+    # running aggs
+    "sums": q_sums, "prds": q_prds, "maxs": q_maxs, "mins": q_mins,
+    "avgs": q_avgs, "deltas": q_deltas, "ratios": q_ratios, "differ": q_differ,
+    # moving-window aggs (dyadic)
+    "msum": q_msum, "mavg": q_mavg, "mmin": q_mmin, "mmax": q_mmax,
+    "mdev": q_mdev, "ema": q_ema,
+    # bucketing (dyadic)
+    "xbar": q_xbar, "bin": q_bin, "wavg": q_wavg, "wsum": q_wsum,
     # math keywords
     "neg": q_neg, "abs": q_abs, "signum": q_signum,
     "ceiling": q_ceiling, "floor": q_floor,

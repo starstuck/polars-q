@@ -31,6 +31,9 @@ VERB_MAP: dict[str, tuple[str, str]] = {
     "ss":       ("polarq.verbs", "q_ss"),
     "sv":       ("polarq.verbs", "q_sv"),
     "vs":       ("polarq.verbs", "q_vs"),
+    "til":      ("polarq.verbs", "q_til"),
+    "enlist":   ("polarq.verbs", "q_enlist"),
+    "raze":     ("polarq.verbs", "q_raze"),
     ",":        ("polarq.verbs", "q_join"),
     "sum":      ("polarq.verbs", "q_sum"),
     "min":      ("polarq.verbs", "q_min"),
@@ -50,6 +53,30 @@ VERB_MAP: dict[str, tuple[str, str]] = {
     "mod":        ("polarq.verbs", "q_mod"),
     "xexp":       ("polarq.verbs", "q_xexp"),
     "xlog":       ("polarq.verbs", "q_xlog"),
+    # aggregation keywords
+    "prd":        ("polarq.verbs", "q_prd"),
+    "var":        ("polarq.verbs", "q_var"),
+    # running aggs
+    "sums":       ("polarq.verbs", "q_sums"),
+    "prds":       ("polarq.verbs", "q_prds"),
+    "maxs":       ("polarq.verbs", "q_maxs"),
+    "mins":       ("polarq.verbs", "q_mins"),
+    "avgs":       ("polarq.verbs", "q_avgs"),
+    "deltas":     ("polarq.verbs", "q_deltas"),
+    "ratios":     ("polarq.verbs", "q_ratios"),
+    "differ":     ("polarq.verbs", "q_differ"),
+    # moving-window aggs
+    "msum":       ("polarq.verbs", "q_msum"),
+    "mavg":       ("polarq.verbs", "q_mavg"),
+    "mmin":       ("polarq.verbs", "q_mmin"),
+    "mmax":       ("polarq.verbs", "q_mmax"),
+    "mdev":       ("polarq.verbs", "q_mdev"),
+    "ema":        ("polarq.verbs", "q_ema"),
+    # bucketing
+    "xbar":       ("polarq.verbs", "q_xbar"),
+    "bin":        ("polarq.verbs", "q_bin"),
+    "wavg":       ("polarq.verbs", "q_wavg"),
+    "wsum":       ("polarq.verbs", "q_wsum"),
 }
 
 ADVERB_MAP: dict[str, tuple[str, str]] = {

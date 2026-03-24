@@ -34,11 +34,15 @@ from polarq.verbs     import (
     q_and, q_or, q_all, q_any,
     q_string, q_lower, q_upper, q_trim, q_ltrim, q_rtrim,
     q_like, q_ss, q_sv, q_vs, q_join,
-    q_sum, q_min, q_max, q_avg, q_dev, q_med,
+    q_sum, q_min, q_max, q_avg, q_dev, q_med, q_prd, q_var,
     q_count, q_first, q_last, q_reverse, q_where, q_distinct, q_group,
+    q_til, q_enlist, q_raze,
     q_neg, q_abs, q_signum, q_ceiling, q_floor,
     q_sqrt, q_exp, q_log, q_reciprocal, q_xexp, q_xlog,
     q_idiv, q_mod,
+    q_sums, q_prds, q_maxs, q_mins, q_avgs, q_deltas, q_ratios, q_differ,
+    q_msum, q_mavg, q_mmin, q_mmax, q_mdev, q_ema,
+    q_xbar, q_bin, q_wavg, q_wsum,
 )
 
 # Named keyword aliases — transpiled q code uses bare names like `neg x`, `abs x`
@@ -55,12 +59,48 @@ xexp       = q_xexp
 xlog       = q_xlog
 div        = q_idiv
 mod        = q_mod
+count      = q_count
+first      = q_first
+last       = q_last
+reverse    = q_reverse
+where      = q_where
+distinct   = q_distinct
+group      = q_group
+til        = q_til
+enlist     = q_enlist
+raze       = q_raze
 string     = q_string
 lower      = q_lower
 upper      = q_upper
 trim       = q_trim
 ltrim      = q_ltrim
 rtrim      = q_rtrim
+sum        = q_sum   # shadows Python builtin intentionally in q exec context
+avg        = q_avg
+min        = q_min   # shadows Python builtin
+max        = q_max   # shadows Python builtin
+dev        = q_dev
+med        = q_med
+prd        = q_prd
+var        = q_var
+sums       = q_sums
+prds       = q_prds
+maxs       = q_maxs
+mins       = q_mins
+avgs       = q_avgs
+deltas     = q_deltas
+ratios     = q_ratios
+differ     = q_differ
+msum       = q_msum
+mavg       = q_mavg
+mmin       = q_mmin
+mmax       = q_mmax
+mdev       = q_mdev
+ema        = q_ema
+xbar       = q_xbar
+bin        = q_bin   # shadows Python builtin
+wavg       = q_wavg
+wsum       = q_wsum
 from polarq.adverbs   import over, scan, each, each_left, each_right
 from polarq.tables    import compile_select, compile_update, compile_aj, compile_wj
 from polarq.temporal  import from_q_timestamp, to_q_timestamp, timestamp_series
@@ -104,12 +144,24 @@ __all__ = [
     "q_like", "q_ss", "q_sv", "q_vs", "q_join",
     "q_sum", "q_min", "q_max", "q_avg", "q_dev", "q_med",
     "q_count", "q_first", "q_last", "q_reverse", "q_where", "q_distinct", "q_group",
+    "q_til", "q_enlist", "q_raze",
     "q_neg", "q_abs", "q_signum", "q_ceiling", "q_floor",
     "q_sqrt", "q_exp", "q_log", "q_reciprocal", "q_xexp", "q_xlog",
     "q_idiv", "q_mod",
+    "q_prd", "q_var",
+    "q_sums", "q_prds", "q_maxs", "q_mins", "q_avgs",
+    "q_deltas", "q_ratios", "q_differ",
+    "q_msum", "q_mavg", "q_mmin", "q_mmax", "q_mdev", "q_ema",
+    "q_xbar", "q_bin", "q_wavg", "q_wsum",
     # keyword aliases
     "neg", "abs", "signum", "ceiling", "floor",
     "sqrt", "exp", "log", "reciprocal", "xexp", "xlog",
     "div", "mod",
     "string", "lower", "upper", "trim", "ltrim", "rtrim",
+    "count", "first", "last", "reverse", "where", "distinct", "group",
+    "til", "enlist", "raze",
+    "sum", "avg", "min", "max", "dev", "med", "prd", "var",
+    "sums", "prds", "maxs", "mins", "avgs", "deltas", "ratios", "differ",
+    "msum", "mavg", "mmin", "mmax", "mdev", "ema",
+    "xbar", "bin", "wavg", "wsum",
 ]

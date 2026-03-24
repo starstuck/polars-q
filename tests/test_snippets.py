@@ -317,6 +317,7 @@ LIST_CORE_SNIPPETS = [
     pytest.param("til 5",             "[0, 1, 2, 3, 4]", id="til"),
     pytest.param("count 1 2 3",       "3",               id="count-vector"),
     pytest.param("count `a`b`c",      "3",               id="count-syms"),
+    pytest.param("v:1 2 3\ncount v",  "3",               id="count-named"),
     pytest.param("enlist 42",         "[42]",            id="enlist-atom"),
     pytest.param("enlist 1 2 3",      "[[1, 2, 3]]",     id="enlist-vector"),
     pytest.param("first 1 2 3",       "1",               id="first"),
@@ -366,9 +367,7 @@ LIST_NULL_SNIPPETS = [
 
 
 class TestListCore:
-    """Core list functions (til, count, enlist, first, last, reverse …) — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
+    """Core list functions (til, count, enlist, first, last, reverse …) — working."""
 
     @pytest.mark.parametrize("q_code,expected", LIST_CORE_SNIPPETS)
     def test_snippet(self, q_code, expected):
@@ -441,38 +440,36 @@ AGG_SNIPPETS = [
 ]
 
 RUNNING_SNIPPETS = [
-    pytest.param("sums 1 2 3 4",      "1 3 6 10",      id="sums"),
-    pytest.param("prds 1 2 3 4",      "1 2 6 24",      id="prds"),
-    pytest.param("maxs 3 1 4 1 5",    "3 3 4 4 5",     id="maxs"),
-    pytest.param("mins 3 1 4 1 5",    "3 1 1 1 1",     id="mins"),
-    pytest.param("avgs 2 4 6",        "2 3 4f",         id="avgs"),
-    pytest.param("deltas 1 3 6 10",   "1 2 3 4",       id="deltas"),
-    pytest.param("ratios 1 2 4 8",    "1 2 2 2f",       id="ratios"),
-    pytest.param("differ 1 1 2 2 3",  "1b 0b 1b 0b 1b", id="differ"),
+    pytest.param("sums 1 2 3 4",      "[1, 3, 6, 10]",                      id="sums"),
+    pytest.param("prds 1 2 3 4",      "[1, 2, 6, 24]",                      id="prds"),
+    pytest.param("maxs 3 1 4 1 5",    "[3, 3, 4, 4, 5]",                    id="maxs"),
+    pytest.param("mins 3 1 4 1 5",    "[3, 1, 1, 1, 1]",                    id="mins"),
+    pytest.param("avgs 2 4 6",        "[2.0, 3.0, 4.0]",                    id="avgs"),
+    pytest.param("deltas 1 3 6 10",   "[1, 2, 3, 4]",                       id="deltas"),
+    pytest.param("ratios 1 2 4 8",    "[1.0, 2.0, 2.0, 2.0]",              id="ratios"),
+    pytest.param("differ 1 1 2 2 3",  "[True, False, True, False, True]",   id="differ"),
 ]
 
 MOVING_SNIPPETS = [
-    pytest.param("3 msum 1 2 3 4 5",  "1 3 6 9 12",    id="msum"),
-    pytest.param("3 mavg 1 2 3 4 5",  "1 1.5 2 3 4f",   id="mavg"),
-    pytest.param("3 mmin 5 3 4 1 2",  "5 3 3 1 1",     id="mmin"),
-    pytest.param("3 mmax 1 5 2 4 3",  "1 5 5 5 4",     id="mmax"),
-    pytest.param("3 mdev 1 2 3 4 5",  "0 0.5 0.8165f",  id="mdev"),
-    pytest.param("0.1 ema 1 2 3",     "1 1.1 1.19f",    id="ema"),
+    pytest.param("3 msum 1 2 3 4 5",  "[1, 3, 6, 9, 12]",                  id="msum"),
+    pytest.param("3 mavg 1 2 3 4 5",  "[1.0, 1.5, 2.0, 3.0, 4.0]",        id="mavg"),
+    pytest.param("3 mmin 5 3 4 1 2",  "[5, 3, 3, 1, 1]",                   id="mmin"),
+    pytest.param("3 mmax 1 5 2 4 3",  "[1, 5, 5, 5, 4]",                   id="mmax"),
+    pytest.param("3 mdev 1 2 3 4 5",  "[0.0, 0.5, 0.8165, 0.8165, 0.8165]", id="mdev"),
+    pytest.param("0.1 ema 1 2 3",     "[1.0, 1.1, 1.29]",                  id="ema"),
 ]
 
 BUCKET_SNIPPETS = [
     pytest.param("10 xbar 15",          "10",   id="xbar"),
     pytest.param("10 xbar 25",          "20",   id="xbar-25"),
     pytest.param("(0 1 2 3) bin 1.5",   "1",    id="bin"),
-    pytest.param("2.1 wavg 1 2 3",      "2.1f", id="wavg"),
+    pytest.param("2.1 wavg 1 2 3",      "6f",   id="wavg"),
     pytest.param("1 2 3 wsum 4 5 6",    "32",   id="wsum"),
 ]
 
 
 class TestAggregations:
-    """Aggregate functions (sum, avg, min, max …) — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
+    """Aggregate functions (sum, avg, min, max …)."""
 
     @pytest.mark.parametrize("q_code,expected", AGG_SNIPPETS)
     def test_snippet(self, q_code, expected):
@@ -480,9 +477,7 @@ class TestAggregations:
 
 
 class TestRunningAgg:
-    """Running/cumulative aggregations (sums, maxs, deltas …) — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
+    """Running/cumulative aggregations (sums, maxs, deltas …)."""
 
     @pytest.mark.parametrize("q_code,expected", RUNNING_SNIPPETS)
     def test_snippet(self, q_code, expected):
@@ -490,9 +485,7 @@ class TestRunningAgg:
 
 
 class TestMovingAgg:
-    """Moving-window aggregations (msum, mavg, ema …) — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
+    """Moving-window aggregations (msum, mavg, ema …)."""
 
     @pytest.mark.parametrize("q_code,expected", MOVING_SNIPPETS)
     def test_snippet(self, q_code, expected):
@@ -500,9 +493,7 @@ class TestMovingAgg:
 
 
 class TestBucketing:
-    """Bucketing: xbar, bin, wavg, wsum — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
+    """Bucketing: xbar, bin, wavg, wsum."""
 
     @pytest.mark.parametrize("q_code,expected", BUCKET_SNIPPETS)
     def test_snippet(self, q_code, expected):
@@ -837,7 +828,6 @@ class TestTemporal:
 
 META_SNIPPETS = [
     pytest.param("x:42\ntype x",            "-7h",             id="type-long"),
-    pytest.param("v:1 2 3\ncount v",        "3",               id="count"),
     pytest.param("v:1 2 3\nkey v",          "7h",              id="key-vector-type"),
     pytest.param("x:42\nshow x",            "42",              id="show"),
     pytest.param("value {x+y}",             "({x+y};+;x;y)",   id="value-lambda"),
