@@ -14,6 +14,7 @@ from typing import Any
 
 from polarq.parser.ast_nodes import (
     IntLit, FloatLit, BoolLit, SymLit, StrLit, NullLit,
+    DateLit, TimeLit, TimestampLit, MonthLit,
     VectorLit, ListLit,
     Name, Assign,
     Verb, BinOp, MonOp, Adverb,
@@ -66,6 +67,16 @@ class QToPythonTranspiler:
             py_ast.ImportFrom(
                 module="polarq",
                 names=[py_ast.alias(name="*")],
+                level=0,
+            ),
+            py_ast.ImportFrom(
+                module="polarq.temporal",
+                names=[
+                    py_ast.alias(name="parse_date_lit"),
+                    py_ast.alias(name="parse_time_lit"),
+                    py_ast.alias(name="parse_timestamp_lit"),
+                    py_ast.alias(name="parse_month_lit"),
+                ],
                 level=0,
             ),
             py_ast.ImportFrom(
@@ -126,6 +137,14 @@ class QToPythonTranspiler:
 
     # ── Expressions ──────────────────────────────────────────────────────────
 
+    def _temporal_call(self, fn_name: str, raw: str) -> py_ast.expr:
+        """Emit: parse_date_lit('2024.01.15') etc."""
+        return py_ast.Call(
+            func=py_ast.Name(id=fn_name, ctx=py_ast.Load()),
+            args=[py_ast.Constant(value=raw)],
+            keywords=[],
+        )
+
     def _qatom_call(self, value: Any, kind: str) -> py_ast.expr:
         """Emit: QAtom(<value>, '<kind>')"""
         return py_ast.Call(
@@ -148,6 +167,15 @@ class QToPythonTranspiler:
                 return py_ast.Constant(value=v)
             case NullLit():
                 return py_ast.Constant(value=None)
+
+            case DateLit(s):
+                return self._temporal_call("parse_date_lit", s)
+            case TimeLit(s):
+                return self._temporal_call("parse_time_lit", s)
+            case TimestampLit(s):
+                return self._temporal_call("parse_timestamp_lit", s)
+            case MonthLit(s):
+                return self._temporal_call("parse_month_lit", s)
 
             case VectorLit(items):
                 return self._vector_lit(items)

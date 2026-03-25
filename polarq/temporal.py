@@ -1,6 +1,6 @@
 from polarq.types import QAtom, QVector
 import polars as pl
-from datetime import date, time, datetime
+from datetime import date, time, datetime, timedelta
 
 # q epoch: 2000-01-01  (unlike Unix 1970-01-01)
 Q_EPOCH_NS = 946684800_000_000_000   # nanoseconds from Unix to q epoch
@@ -38,6 +38,33 @@ TEMPORAL_ATTRS = {
     "ss":     lambda s: s.dt.second(),
     "ns":     lambda s: s.dt.nanosecond(),
 }
+
+def parse_date_lit(s: str) -> QAtom:
+    """Parse a q date literal string '2024.01.15' into a QAtom[d]."""
+    y, m, d_ = int(s[:4]), int(s[5:7]), int(s[8:10])
+    return QAtom(date(y, m, d_), "d")
+
+def parse_time_lit(s: str) -> QAtom:
+    """Parse a q time literal string 'HH:MM:SS.mmm' into a QAtom[t]."""
+    h, mn, sc = int(s[:2]), int(s[3:5]), int(s[6:8])
+    frac = s[9:] if len(s) > 8 else "0"
+    ms = int(frac.ljust(3, "0")[:3])
+    return QAtom(time(h, mn, sc, ms * 1000), "t")
+
+def parse_timestamp_lit(s: str) -> QAtom:
+    """Parse a q timestamp literal 'YYYY.MM.DDDhh:mm:ss.nnnnnnnnn' into QAtom[p]."""
+    date_str, time_str = s.split("D", 1)
+    y, mo, d_ = int(date_str[:4]), int(date_str[5:7]), int(date_str[8:10])
+    h, mn, sc = int(time_str[:2]), int(time_str[3:5]), int(time_str[6:8])
+    frac = time_str[9:] if len(time_str) > 8 else "0"
+    ns = int(frac.ljust(9, "0")[:9])
+    us = ns // 1000
+    return QAtom(datetime(y, mo, d_, h, mn, sc, us), "p")
+
+def parse_month_lit(s: str) -> QAtom:
+    """Parse a q month literal '2024.01m' into QAtom[m]."""
+    y, m = int(s[:4]), int(s[5:7])
+    return QAtom(date(y, m, 1), "m")
 
 def extract(attr: str, x: QVector) -> QVector:
     fn = TEMPORAL_ATTRS.get(attr)

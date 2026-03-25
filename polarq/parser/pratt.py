@@ -47,6 +47,7 @@ from polarq.errors import QParseError
 from polarq.parser.lexer import Token, TT, tokenize as lex
 from polarq.parser.ast_nodes import (
     IntLit, FloatLit, BoolLit, SymLit, StrLit, NullLit,
+    DateLit, TimeLit, TimestampLit, MonthLit,
     VectorLit, ListLit,
     Name, Assign,
     Verb, BinOp, MonOp, Adverb,
@@ -283,6 +284,18 @@ class Parser:
         elif tok.type == TT.NULL:
             self._advance()
             node = NullLit(tok.value)
+        elif tok.type == TT.DATE:
+            self._advance()
+            node = DateLit(tok.value)
+        elif tok.type == TT.TIME:
+            self._advance()
+            node = TimeLit(tok.value)
+        elif tok.type == TT.TIMESTAMP:
+            self._advance()
+            node = TimestampLit(tok.value)
+        elif tok.type == TT.MONTH:
+            self._advance()
+            node = MonthLit(tok.value)
 
         # ── Name ──────────────────────────────────────────────────────────────
         elif tok.type == TT.NAME:

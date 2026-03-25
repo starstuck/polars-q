@@ -43,6 +43,17 @@ class QAtom:
             v = self.value
             if v != v: return "0nf"          # nan
             return f"{v:.4g}f"               # 4 sig figs, matches q console
+        elif self.kind == "d":
+            return self.value.strftime("%Y.%m.%d")
+        elif self.kind == "t":
+            ms = self.value.microsecond // 1000
+            return self.value.strftime("%H:%M:%S") + f".{ms:03d}"
+        elif self.kind == "p":
+            us = self.value.microsecond
+            ns = us * 1000
+            return self.value.strftime("%Y.%m.%dD%H:%M:%S") + f".{ns:09d}"
+        elif self.kind == "m":
+            return self.value.strftime("%Y.%m") + "m"
         else:                  return repr(self.value)
 
     def __eq__(self, other) -> bool:

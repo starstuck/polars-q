@@ -33,12 +33,17 @@ from typing import Iterator
 
 class TT(Enum):
     # Literals
-    BOOL   = auto()   # 0b  1b
-    FLOAT  = auto()   # 3.14  1.5e  -2.0f
-    INT    = auto()   # 42  42i  42j  42h   (may be negative)
-    SYM    = auto()   # `foo  ` (empty sym)
-    STRING = auto()   # "hello world"
-    NULL   = auto()   # 0N  0n  0Nd  0Nt  0Np  0Nv  0Nu  0Nz  ::
+    BOOL      = auto()   # 0b  1b
+    FLOAT     = auto()   # 3.14  1.5e  -2.0f
+    INT       = auto()   # 42  42i  42j  42h   (may be negative)
+    SYM       = auto()   # `foo  ` (empty sym)
+    STRING    = auto()   # "hello world"
+    NULL      = auto()   # 0N  0n  0Nd  0Nt  0Np  0Nv  0Nu  0Nz  ::
+    # Temporal literals
+    TIMESTAMP = auto()   # 2024.01.15D12:30:00.000000000
+    MONTH     = auto()   # 2024.01m
+    DATE      = auto()   # 2024.01.15
+    TIME      = auto()   # 12:30:00.000
     # Identifiers / keywords
     NAME     = auto()
     KW_SELECT= auto()
@@ -111,6 +116,7 @@ KEYWORDS: dict[str, TT] = {
 # the start of a negative literal.
 _VALUE_CLOSE = frozenset({
     TT.INT, TT.FLOAT, TT.BOOL, TT.SYM, TT.STRING, TT.NULL,
+    TT.DATE, TT.TIME, TT.TIMESTAMP, TT.MONTH,
     TT.NAME,
     TT.KW_SELECT, TT.KW_UPDATE, TT.KW_EXEC, TT.KW_DELETE,
     TT.KW_FROM, TT.KW_WHERE, TT.KW_BY,
@@ -147,6 +153,12 @@ _RAW_PATTERNS: list[tuple[TT | None, str]] = [
     # Typed nulls  0N  0n  0Nd  0Nt  0Np  0Nv  0Nu  0Nz  (plus generic ::)
     (TT.NULL,            r"0[Nn][a-z]?(?![a-zA-Z0-9_.])"),
     (TT.DCOLON,          r"::"),
+    # Temporal literals — checked before FLOAT/INT to avoid partial matches.
+    # Order: TIMESTAMP > MONTH > DATE > TIME  (most specific first).
+    (TT.TIMESTAMP,       r"\d{4}\.\d{2}\.\d{2}D\d{2}:\d{2}:\d{2}\.\d+"),
+    (TT.MONTH,           r"\d{4}\.\d{2}m(?![a-zA-Z0-9_.])"),
+    (TT.DATE,            r"\d{4}\.\d{2}\.\d{2}(?![D\d.])"),
+    (TT.TIME,            r"\d{2}:\d{2}:\d{2}\.\d+"),
     # Floats — various forms; optional negative handled separately in _lex()
     # Matches: 3.14  .5  3.  1.5e3  1.5e-3  3.14f  (no leading minus here)
     (TT.FLOAT,           r"[0-9]+\.[0-9]*(?:[eE][+-]?[0-9]+)?[ef]?"

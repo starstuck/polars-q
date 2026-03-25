@@ -23,16 +23,35 @@ def _arith(polars_op, py_op):
         raise QTypeError(f"type mismatch")
     return dyad
 
+
+def _date_add(x: QValue, y: QValue) -> QValue:
+    """date + int  →  date shifted by n days."""
+    from datetime import timedelta, date
+    if isinstance(x, QAtom) and x.kind == "d" and isinstance(y, QAtom):
+        return QAtom(x.value + timedelta(days=int(y.value)), "d")
+    return _arith(lambda a, b: a + b, lambda a, b: a + b)(x, y)
+
+
+def _date_sub(x: QValue, y: QValue) -> QValue:
+    """date - date  →  int (days);  date - int  →  date shifted back."""
+    from datetime import timedelta, date
+    if isinstance(x, QAtom) and x.kind == "d" and isinstance(y, QAtom):
+        if y.kind == "d":
+            return QAtom((x.value - y.value).days, "j")
+        return QAtom(x.value - timedelta(days=int(y.value)), "d")
+    return _arith(lambda a, b: a - b, lambda a, b: a - b)(x, y)
+
+
 # ── Core arithmetic ───────────────────────────────────────────────────────────
 
 q_add = QBuiltin("add",
     monad = lambda x: x,                              # monadic + = flip for tables
-    dyad  = _arith(lambda a,b: a+b, lambda a,b: a+b)
+    dyad  = _date_add,
 )
 q_sub = QBuiltin("sub",
     monad = lambda x: QAtom(-x.value, x.kind) if isinstance(x, QAtom)
                       else QVector(-x.series, x.kind),
-    dyad  = _arith(lambda a,b: a-b, lambda a,b: a-b)
+    dyad  = _date_sub,
 )
 q_mul = QBuiltin("mul",
     monad = lambda x: x,                              # monadic * = first of list
@@ -529,7 +548,7 @@ def q_value(x) -> QValue:
 
 _KIND_TYPE_NUM = {
     "b": 1, "h": 5, "i": 6, "j": 7, "e": 8, "f": 9, "c": 10, "s": 11,
-    "p": 12, "d": 14, "t": 19,
+    "p": 12, "m": 13, "d": 14, "t": 19,
 }
 
 def q_type(x) -> QAtom:
@@ -575,6 +594,14 @@ def q_cast(type_char: str, x) -> QValue:
         # cast to symbol: string → symbol atom
         val = str(raw)
         return QAtom(val, "s")
+
+    if tc == "d":
+        # cast to date: date → identity, int → days-from-2000-01-01
+        from datetime import date as _date, timedelta
+        if isinstance(raw, _date):
+            return QAtom(raw, "d")
+        _epoch = _date(2000, 1, 1)
+        return QAtom(_epoch + timedelta(days=int(raw)), "d")
 
     if tc not in _CAST_PY:
         raise QTypeError(f"cast: unknown type char {type_char!r}")

@@ -834,9 +834,7 @@ class TestTemporalEnv:
 
 
 class TestTemporal:
-    """Temporal literals, type codes, arithmetic — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_FULL, strict=True)
+    """Temporal literals, type codes, arithmetic."""
 
     @pytest.mark.parametrize("q_code,expected", TEMPORAL_SNIPPETS)
     def test_snippet(self, q_code, expected):

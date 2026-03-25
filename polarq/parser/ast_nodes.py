@@ -53,6 +53,26 @@ class NullLit:
     """The generic null :: or typed nulls 0N 0n 0Nd etc."""
     kind: str = ""   # "" for generic, "j" for 0N, "f" for 0n, etc.
 
+@dataclass(frozen=True)
+class DateLit:
+    """Date literal: 2024.01.15"""
+    value: str   # raw string "YYYY.MM.DD"
+
+@dataclass(frozen=True)
+class TimeLit:
+    """Time literal: 12:30:00.000"""
+    value: str   # raw string "HH:MM:SS.mmm"
+
+@dataclass(frozen=True)
+class TimestampLit:
+    """Timestamp literal: 2024.01.15D12:30:00.000000000"""
+    value: str   # raw string
+
+@dataclass(frozen=True)
+class MonthLit:
+    """Month literal: 2024.01m"""
+    value: str   # raw string "YYYY.MMm"
+
 
 # ── Composite value nodes ─────────────────────────────────────────────────────
 
