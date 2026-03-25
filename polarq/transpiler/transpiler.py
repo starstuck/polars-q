@@ -41,6 +41,11 @@ class QToPythonTranspiler:
                 names=[py_ast.alias(name="*")],
                 level=0,
             ),
+            py_ast.ImportFrom(
+                module="functools",
+                names=[py_ast.alias(name="partial", asname="_q_partial")],
+                level=0,
+            ),
         ]
         body = imports + [self._stmt(s) for s in script.stmts]
         mod = py_ast.Module(body=body, type_ignores=[])
@@ -170,11 +175,41 @@ class QToPythonTranspiler:
         raise NotImplementedError(f"transpiler: unknown monadic verb {op!r}")
 
     def _apply(self, func: Any, args: tuple) -> py_ast.expr:
-        fn   = self._expr(func)
+        # Apply(Adverb(verb, adv), args) → adverb_fn(verb_expr, *arg_exprs)
+        if isinstance(func, Adverb):
+            ref = ADVERB_MAP.get(func.adverb)
+            if not ref:
+                raise NotImplementedError(
+                    f"transpiler: unknown adverb {func.adverb!r}"
+                )
+            _, name = ref
+            verb_expr = self._expr(func.verb)
+            arg_exprs = [
+                self._expr(a) if a is not None else py_ast.Constant(value=None)
+                for a in args
+            ]
+            return py_ast.Call(
+                func=py_ast.Name(id=name, ctx=py_ast.Load()),
+                args=[verb_expr] + arg_exprs,
+                keywords=[],
+            )
+
+        fn    = self._expr(func)
         pargs = [
             self._expr(a) if a is not None else py_ast.Constant(value=None)
             for a in args
         ]
+
+        # Partial application: Lambda with more params than args supplied
+        if isinstance(func, Lambda):
+            n_params = len(func.params) if func.params else 3  # implicit x y z
+            if len(args) < n_params:
+                return py_ast.Call(
+                    func=py_ast.Name(id="_q_partial", ctx=py_ast.Load()),
+                    args=[fn] + pargs,
+                    keywords=[],
+                )
+
         return py_ast.Call(func=fn, args=pargs, keywords=[])
 
     def _lambda(self, params: tuple, body: tuple) -> py_ast.expr:

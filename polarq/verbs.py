@@ -473,6 +473,21 @@ def _join_dyad(x, y):
         return x + y
     if isinstance(x, QAtom) and isinstance(y, QAtom) and x.kind == "c" == y.kind:
         return QAtom(x.value + y.value, "c")
+    # Numeric atoms of the same kind → 2-element vector
+    if (isinstance(x, QAtom) and isinstance(y, QAtom)
+            and x.kind == y.kind and x.kind not in ("c", "s")):
+        from polarq.types import KIND_TO_POLARS
+        dtype = KIND_TO_POLARS.get(x.kind)
+        return QVector(pl.Series([x.value, y.value], dtype=dtype), x.kind)
+    # Atom + vector or vector + atom → extend
+    if isinstance(x, QAtom) and isinstance(y, QVector) and x.kind == y.kind:
+        return QVector(
+            pl.concat([pl.Series([x.value], dtype=y.series.dtype), y.series]), x.kind
+        )
+    if isinstance(x, QVector) and isinstance(y, QAtom) and x.kind == y.kind:
+        return QVector(
+            pl.concat([x.series, pl.Series([y.value], dtype=x.series.dtype)]), x.kind
+        )
     if isinstance(x, (QAtom, str)) and isinstance(y, (QAtom, str)):
         return QAtom(_str_val(x) + _str_val(y), "c")
     if isinstance(x, QVector) and isinstance(y, QVector) and x.kind == y.kind:

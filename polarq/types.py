@@ -94,6 +94,19 @@ class QVector:
             return " ".join(f'"{v}"' for v in self.series)
         return repr(list(self.series))
 
+    def __str__(self):
+        """q-style display: space-separated elements."""
+        if self.kind == "b":
+            return "".join("1" if v else "0" for v in self.series) + "b"
+        elif self.kind == "s":
+            return "".join(f"`{v}" for v in self.series)
+        elif self.kind == "c":
+            return " ".join(f'"{v}"' for v in self.series)
+        elif self.kind in ("f", "e"):
+            return " ".join(f"{v:.4g}" for v in self.series.to_list())
+        else:
+            return " ".join(str(v) for v in self.series.to_list())
+
     # q-style indexing: v[2], v[0 1 2], v[::] (elision)
     def __getitem__(self, idx):
         if isinstance(idx, QAtom):
@@ -111,6 +124,13 @@ class QList:
 
     def __len__(self):  return len(self.items)
     def __repr__(self): return repr(self.items)
+    def __str__(self):
+        """q-style display: () empty, ,x single, (a;b;c) multi."""
+        if len(self.items) == 0:
+            return "()"
+        if len(self.items) == 1:
+            return "," + str(self.items[0])
+        return "(" + ";".join(str(item) for item in self.items) + ")"
 
 # ── Dict & Table ──────────────────────────────────────────────────────────────
 

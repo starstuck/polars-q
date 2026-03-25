@@ -87,6 +87,7 @@ class TT(Enum):
     ADVERB_EACH      = auto()   # '
     ADVERB_EACHRIGHT = auto()   # /:
     ADVERB_EACHLEFT  = auto()   # \:
+    ADVERB_EACHPRIOR = auto()   # ':
     # Whitespace / structure
     NEWLINE = auto()
     EOF     = auto()
@@ -158,11 +159,12 @@ _RAW_PATTERNS: list[tuple[TT | None, str]] = [
     # Symbols (backtick, optional name body; chain handled by parser)
     (TT.SYM,             r"`[a-zA-Z0-9_.]*"),
     # Adverbs — multi-character before single-character
-    (TT.ADVERB_EACHRIGHT,r"/:"),
-    (TT.ADVERB_EACHLEFT, r"\\:"),
-    (TT.ADVERB_OVER,     r"/"),
-    (TT.ADVERB_SCAN,     r"\\"),
-    (TT.ADVERB_EACH,     r"'"),
+    (TT.ADVERB_EACHRIGHT, r"/:"),
+    (TT.ADVERB_EACHLEFT,  r"\\:"),
+    (TT.ADVERB_EACHPRIOR, r"':"),
+    (TT.ADVERB_OVER,      r"/"),
+    (TT.ADVERB_SCAN,      r"\\"),
+    (TT.ADVERB_EACH,      r"'"),
     # Single colon (after :: already matched above)
     (TT.COLON,           r":"),
     # Structural

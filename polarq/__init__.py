@@ -101,7 +101,7 @@ xbar       = q_xbar
 bin        = q_bin   # shadows Python builtin
 wavg       = q_wavg
 wsum       = q_wsum
-from polarq.adverbs   import over, scan, each, each_left, each_right
+from polarq.adverbs   import over, scan, each, each_left, each_right, each_prior
 from polarq.tables    import compile_select, compile_update, compile_aj, compile_wj
 from polarq.temporal  import from_q_timestamp, to_q_timestamp, timestamp_series
 from polarq.ipc       import PolarQServer, PolarQClient
@@ -133,7 +133,7 @@ __all__ = [
     "Q", "qvec", "QAtom", "QVector", "QList", "QDict",
     "QTable", "QKeyedTable", "QLambda", "QBuiltin", "QAdverb",
     "QNull", "qnull", "QEnv", "PolarQServer", "PolarQClient",
-    "over", "scan", "each", "each_left", "each_right",
+    "over", "scan", "each", "each_left", "each_right", "each_prior",
     "compile_select", "compile_update", "compile_aj", "compile_wj",
     "QError", "QTypeError", "QLengthError", "QRankError",
     # verb functions (for transpiled code: `from polarq import *`)

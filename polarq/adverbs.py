@@ -1,11 +1,51 @@
 from polarq.types import *
 import polars as pl
-from functools import reduce
 
-def over(verb: QBuiltin, x: QValue, init: QValue = None) -> QValue:
+
+# ── Internal helpers ──────────────────────────────────────────────────────────
+
+def _call(fn, *args):
+    """Invoke fn, supporting both QBuiltin and plain Python callables."""
+    if isinstance(fn, QBuiltin):
+        if len(args) == 1:
+            return fn.monad(args[0])
+        return fn.dyad(args[0], args[1])
+    return fn(*args)
+
+
+def _iter(x: QValue) -> list:
+    """Expand x into a list of QValues for element-wise iteration."""
+    if isinstance(x, QVector):
+        return [QAtom(v, x.kind) for v in x.series.to_list()]
+    if isinstance(x, QList):
+        return x.items
+    return [x]
+
+
+def _collect(results: list) -> QValue:
     """
-    +/ — fold. Routes to Polars native agg when verb is a known builtin.
-    Falls back to Python reduce otherwise.
+    Combine a list of results into the most appropriate QValue:
+      - single result  → return it directly (unwrap)
+      - all same-kind QAtoms → QVector
+      - mixed          → QList
+    """
+    if len(results) == 0:
+        return QList([])
+    if len(results) == 1:
+        return results[0]
+    if all(isinstance(r, QAtom) and r.kind == results[0].kind for r in results):
+        kind = results[0].kind
+        vals = [r.value for r in results]
+        dtype = KIND_TO_POLARS.get(kind)
+        return QVector(pl.Series(vals, dtype=dtype), kind)
+    return QList(results)
+
+
+# ── Public adverb functions ───────────────────────────────────────────────────
+
+def over(fn, x, init=None):
+    """
+    f/ — fold (reduce).  Routes to Polars native agg for known QBuiltins.
     """
     POLARS_FOLDS = {
         "sum": lambda v: QAtom(v.series.sum(), v.kind),
@@ -13,103 +53,93 @@ def over(verb: QBuiltin, x: QValue, init: QValue = None) -> QValue:
         "min": lambda v: QAtom(v.series.min(), v.kind),
         "max": lambda v: QAtom(v.series.max(), v.kind),
     }
-    if isinstance(verb, QBuiltin) and verb.name in POLARS_FOLDS:
-        if isinstance(x, QVector):
-            return POLARS_FOLDS[verb.name](x)
+    if isinstance(fn, QBuiltin) and fn.name in POLARS_FOLDS and isinstance(x, QVector):
+        return POLARS_FOLDS[fn.name](x)
 
-    # Convergence form: f/ x  (apply until stable)
+    # Convergence form: f/ x (atom) — apply until stable
     if init is None and isinstance(x, QAtom):
         prev, curr = None, x
         while prev is None or prev.value != curr.value:
             prev = curr
-            curr = verb.monad(curr)
+            curr = _call(fn, curr)
         return curr
 
-    # Standard fold
-    # QVector.series.to_list() produces plain Python scalars; wrap in QAtom so
-    # that verb.dyad always receives proper QValue arguments.
     if isinstance(x, QVector):
         items = [QAtom(v, x.kind) for v in x.series.to_list()]
-    else:
+    elif isinstance(x, QList):
         items = x.items
+    else:
+        items = [x]
+
     acc = init if init is not None else items[0]
     for item in (items if init is not None else items[1:]):
-        acc = verb.dyad(acc, item)
+        acc = _call(fn, acc, item)
     return acc
 
 
-def scan(verb: QBuiltin, x: QValue, init: QValue = None) -> QVector:
+def scan(fn, x, init=None):
     """
-    +\\ — running fold. Routes to Polars cum_* for known verbs.
+    f\\ — running fold.  Routes to Polars cum_* for known QBuiltins.
     """
     POLARS_SCANS = {
         "sum": lambda s: s.cum_sum(),
         "min": lambda s: s.cum_min(),
         "max": lambda s: s.cum_max(),
     }
-    if isinstance(verb, QBuiltin) and verb.name in POLARS_SCANS:
-        if isinstance(x, QVector):
-            return QVector(POLARS_SCANS[verb.name](x.series), x.kind)
+    if isinstance(fn, QBuiltin) and fn.name in POLARS_SCANS and isinstance(x, QVector):
+        return QVector(POLARS_SCANS[fn.name](x.series), x.kind)
 
-    items = x.series.to_list() if isinstance(x, QVector) else x.items
-    acc   = init if init is not None else QAtom(items[0], x.kind)
+    if isinstance(x, QVector):
+        items = [QAtom(v, x.kind) for v in x.series.to_list()]
+    elif isinstance(x, QList):
+        items = x.items
+    else:
+        items = [x]
+
+    acc = init if init is not None else items[0]
     results = [acc]
     for item in (items if init is not None else items[1:]):
-        item_val = QAtom(item, x.kind) if not isinstance(item, QValue) else item
-        acc = verb.dyad(acc, item_val)
+        acc = _call(fn, acc, item)
         results.append(acc)
-    vals = [r.value if isinstance(r, QAtom) else r for r in results]
-    return QVector(pl.Series(vals), x.kind)
+    return _collect(results)
 
 
-def each(verb: QBuiltin, x: QValue) -> QValue:
-    """
-    f' — apply verb to each element. Vectorises over Series if possible.
-    """
-    if isinstance(x, QVector):
-        # Try to stay in Polars: map known monads to Series methods
-        POLARS_EACH = {
-            "neg":     lambda s: -s,
-            "reverse": lambda s: s.reverse(),  # no-op on atoms but safe
-            "count":   lambda s: pl.Series([1]*len(s)),
-        }
-        if isinstance(verb, QBuiltin) and verb.name in POLARS_EACH:
-            return QVector(POLARS_EACH[verb.name](x.series), x.kind)
-        # Fallback: map_elements
-        return QVector(
-            x.series.map_elements(lambda v: verb.monad(QAtom(v, x.kind)).value),
-            x.kind
-        )
-    if isinstance(x, QList):
-        return QList([verb.monad(item) for item in x.items])
-    if isinstance(x, QTable):
-        # each over rows (expensive — warn)
-        rows = x.frame.collect().to_dicts()
-        return QList([verb.monad(_row_to_qtable(r)) for r in rows])
-    return verb.monad(x)
-
-
-def each_left(verb: QBuiltin, x: QValue, y: QValue) -> QList:
-    """x f\\: y — apply (xi f y) for each xi in x."""
+def each(fn, x):
+    """f' / f each — apply fn to each element of x."""
     items = _iter(x)
-    return QList([verb.dyad(xi, y) for xi in items])
+    return _collect([_call(fn, xi) for xi in items])
 
 
-def each_right(verb: QBuiltin, x: QValue, y: QValue) -> QList:
-    """x f/: y — apply (x f yi) for each yi in y."""
+def each_right(fn, y):
+    """f/: y — apply fn to each element of y (right argument varies)."""
     items = _iter(y)
-    return QList([verb.dyad(x, yi) for yi in items])
+    return _collect([_call(fn, yi) for yi in items])
 
 
-def each_both(verb: QBuiltin, x: QValue, y: QValue) -> QList:
-    """x f': y — paired application."""
+def each_left(fn, x):
+    """f\\: x — apply fn to each element of x (left argument varies)."""
+    items = _iter(x)
+    return _collect([_call(fn, xi) for xi in items])
+
+
+def each_prior(fn, x):
+    """
+    f': x — each-prior.
+    Result[0] = x[0] (identity).
+    Result[i] = fn(x[i-1], x[i]) for i > 0.
+    """
+    items = _iter(x)
+    if not items:
+        return QList([])
+    results = [items[0]]
+    for i in range(1, len(items)):
+        results.append(_call(fn, items[i - 1], items[i]))
+    return _collect(results)
+
+
+def each_both(fn, x, y):
+    """x f': y — paired application (zip)."""
     xs, ys = _iter(x), _iter(y)
     if len(xs) != len(ys):
         raise QLengthError("each_both: length mismatch")
-    return QList([verb.dyad(xi, yi) for xi, yi in zip(xs, ys)])
-
-
-def _iter(x: QValue) -> list:
-    if isinstance(x, QVector): return [QAtom(v, x.kind) for v in x.series.to_list()]
-    if isinstance(x, QList):   return x.items
-    return [x]
+    return _collect([_call(fn, xi, yi) for xi, yi in zip(xs, ys)])

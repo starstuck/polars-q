@@ -48,6 +48,8 @@ VERB_MAP: dict[str, tuple[str, str]] = {
     "where":    ("polarq.verbs", "q_where"),
     "distinct": ("polarq.verbs", "q_distinct"),
     "group":    ("polarq.verbs", "q_group"),
+    # adverb keyword used as infix: f each x → each(f, x)
+    "each":       ("polarq.adverbs", "each"),
     # dyadic named keywords — used via BinOp after parser fix
     "div":        ("polarq.verbs", "q_idiv"),
     "mod":        ("polarq.verbs", "q_mod"),
@@ -85,4 +87,5 @@ ADVERB_MAP: dict[str, tuple[str, str]] = {
     "'":   ("polarq.adverbs", "each"),
     "/:":  ("polarq.adverbs", "each_right"),
     "\\:": ("polarq.adverbs", "each_left"),
+    "':":  ("polarq.adverbs", "each_prior"),
 }

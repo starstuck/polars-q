@@ -121,10 +121,10 @@ class TestAtoms:
 # ══════════════════════════════════════════════════════════════════════════════╗
 
 VECTOR_SNIPPETS = [
-    pytest.param("1 2 3",         "[1, 2, 3]",           id="int-vector"),
-    pytest.param("1.5 2.5 3.5",   "[1.5, 2.5, 3.5]",    id="float-vector"),
-    pytest.param("1b 0b 1b",      "[True, False, True]", id="bool-vector"),
-    pytest.param("`a`b`c",        "['a', 'b', 'c']",     id="sym-vector"),
+    pytest.param("1 2 3",         "1 2 3",       id="int-vector"),
+    pytest.param("1.5 2.5 3.5",   "1.5 2.5 3.5", id="float-vector"),
+    pytest.param("1b 0b 1b",      "101b",        id="bool-vector"),
+    pytest.param("`a`b`c",        "`a`b`c",      id="sym-vector"),
 ]
 
 
@@ -146,13 +146,13 @@ ASSIGNMENT_SNIPPETS = [
     pytest.param("x:1b",        "1b",               id="local-bool"),
     pytest.param("x:`AAPL",     "`AAPL",            id="local-symbol"),
     pytest.param('x:"hello"',   "hello",            id="local-string"),
-    pytest.param("v:1 2 3",     "[1, 2, 3]",        id="local-vector"),
-    pytest.param("v:`a`b`c",    "['a', 'b', 'c']",  id="local-sym-vec"),
+    pytest.param("v:1 2 3",     "1 2 3",    id="local-vector"),
+    pytest.param("v:`a`b`c",    "`a`b`c",   id="local-sym-vec"),
 ]
 
 NAME_LOOKUP_SNIPPETS = [
     pytest.param(["x:42",       "x"],           ["42",  "42"],              id="recall-int"),
-    pytest.param(["v:1 2 3",    "v"],           ["[1, 2, 3]", "[1, 2, 3]"], id="recall-vector"),
+    pytest.param(["v:1 2 3",    "v"],           ["1 2 3", "1 2 3"],         id="recall-vector"),
     pytest.param(["x:42","y:99","x"],           ["42","99","42"],            id="multi-binding"),
 ]
 
@@ -185,8 +185,8 @@ ARITHMETIC_SNIPPETS = [
     pytest.param("2+3*4",       "14",           id="rtl-no-prec"),      # right-to-left: 2+(3*4)
     pytest.param("7 div 2",     "3",            id="integer-div"),
     pytest.param("7 mod 3",     "1",            id="modulo"),
-    pytest.param("1 2 3 + 10",  "[11, 12, 13]", id="vector-add"),
-    pytest.param("2 * 1 2 3",   "[2, 4, 6]",   id="vector-mul"),
+    pytest.param("1 2 3 + 10",  "11 12 13",     id="vector-add"),
+    pytest.param("2 * 1 2 3",   "2 4 6",        id="vector-mul"),
 ]
 
 MATH_KEYWORD_SNIPPETS = [
@@ -295,7 +295,7 @@ STRING_SNIPPETS = [
     pytest.param('ltrim "  hi"',       '"hi"',         id="ltrim"),
     pytest.param('rtrim "hi  "',       '"hi"',         id="rtrim"),
     pytest.param('"hello" like "h*"',  "1b",           id="like-glob"),
-    pytest.param('"hello" ss "l"',     "[2, 3]",       id="ss-positions"),
+    pytest.param('"hello" ss "l"',     "2 3",          id="ss-positions"),
     pytest.param('"," sv "a","b","c"', '"a,b,c"',      id="sv-join"),
     pytest.param('"," vs "a,b,c"',     '"a" "b" "c"',  id="vs-split"),
 ]
@@ -314,17 +314,17 @@ class TestStrings:
 # ══════════════════════════════════════════════════════════════════════════════╗
 
 LIST_CORE_SNIPPETS = [
-    pytest.param("til 5",             "[0, 1, 2, 3, 4]", id="til"),
+    pytest.param("til 5",             "0 1 2 3 4",       id="til"),
     pytest.param("count 1 2 3",       "3",               id="count-vector"),
     pytest.param("count `a`b`c",      "3",               id="count-syms"),
     pytest.param("v:1 2 3\ncount v",  "3",               id="count-named"),
-    pytest.param("enlist 42",         "[42]",            id="enlist-atom"),
-    pytest.param("enlist 1 2 3",      "[[1, 2, 3]]",     id="enlist-vector"),
+    pytest.param("enlist 42",         ",42",             id="enlist-atom"),
+    pytest.param("enlist 1 2 3",      ",1 2 3",          id="enlist-vector"),
     pytest.param("first 1 2 3",       "1",               id="first"),
     pytest.param("last 1 2 3",        "3",               id="last"),
-    pytest.param("reverse 1 2 3",     "[3, 2, 1]",       id="reverse"),
-    pytest.param("distinct 1 2 1 3",  "[1, 2, 3]",       id="distinct"),
-    pytest.param("raze (1 2;3 4)",    "[1, 2, 3, 4]",    id="raze"),
+    pytest.param("reverse 1 2 3",     "3 2 1",           id="reverse"),
+    pytest.param("distinct 1 2 1 3",  "1 2 3",           id="distinct"),
+    pytest.param("raze (1 2;3 4)",    "1 2 3 4",         id="raze"),
 ]
 
 LIST_SLICE_SNIPPETS = [
@@ -440,23 +440,23 @@ AGG_SNIPPETS = [
 ]
 
 RUNNING_SNIPPETS = [
-    pytest.param("sums 1 2 3 4",      "[1, 3, 6, 10]",                      id="sums"),
-    pytest.param("prds 1 2 3 4",      "[1, 2, 6, 24]",                      id="prds"),
-    pytest.param("maxs 3 1 4 1 5",    "[3, 3, 4, 4, 5]",                    id="maxs"),
-    pytest.param("mins 3 1 4 1 5",    "[3, 1, 1, 1, 1]",                    id="mins"),
-    pytest.param("avgs 2 4 6",        "[2.0, 3.0, 4.0]",                    id="avgs"),
-    pytest.param("deltas 1 3 6 10",   "[1, 2, 3, 4]",                       id="deltas"),
-    pytest.param("ratios 1 2 4 8",    "[1.0, 2.0, 2.0, 2.0]",              id="ratios"),
-    pytest.param("differ 1 1 2 2 3",  "[True, False, True, False, True]",   id="differ"),
+    pytest.param("sums 1 2 3 4",      "1 3 6 10",       id="sums"),
+    pytest.param("prds 1 2 3 4",      "1 2 6 24",       id="prds"),
+    pytest.param("maxs 3 1 4 1 5",    "3 3 4 4 5",      id="maxs"),
+    pytest.param("mins 3 1 4 1 5",    "3 1 1 1 1",      id="mins"),
+    pytest.param("avgs 2 4 6",        "2 3 4",           id="avgs"),
+    pytest.param("deltas 1 3 6 10",   "1 2 3 4",         id="deltas"),
+    pytest.param("ratios 1 2 4 8",    "1 2 2 2",         id="ratios"),
+    pytest.param("differ 1 1 2 2 3",  "10101b",          id="differ"),
 ]
 
 MOVING_SNIPPETS = [
-    pytest.param("3 msum 1 2 3 4 5",  "[1, 3, 6, 9, 12]",                  id="msum"),
-    pytest.param("3 mavg 1 2 3 4 5",  "[1.0, 1.5, 2.0, 3.0, 4.0]",        id="mavg"),
-    pytest.param("3 mmin 5 3 4 1 2",  "[5, 3, 3, 1, 1]",                   id="mmin"),
-    pytest.param("3 mmax 1 5 2 4 3",  "[1, 5, 5, 5, 4]",                   id="mmax"),
-    pytest.param("3 mdev 1 2 3 4 5",  "[0.0, 0.5, 0.8165, 0.8165, 0.8165]", id="mdev"),
-    pytest.param("0.1 ema 1 2 3",     "[1.0, 1.1, 1.29]",                  id="ema"),
+    pytest.param("3 msum 1 2 3 4 5",  "1 3 6 9 12",              id="msum"),
+    pytest.param("3 mavg 1 2 3 4 5",  "1 1.5 2 3 4",             id="mavg"),
+    pytest.param("3 mmin 5 3 4 1 2",  "5 3 3 1 1",               id="mmin"),
+    pytest.param("3 mmax 1 5 2 4 3",  "1 5 5 5 4",               id="mmax"),
+    pytest.param("3 mdev 1 2 3 4 5",  "0 0.5 0.8165 0.8165 0.8165", id="mdev"),
+    pytest.param("0.1 ema 1 2 3",     "1 1.1 1.29",              id="ema"),
 ]
 
 BUCKET_SNIPPETS = [
@@ -519,10 +519,7 @@ ITER_EACH_SNIPPETS = [
 
 
 class TestIterators:
-    """Iterators: over (/), scan (\\), each ('), each-right (/:), each-left (\\:)
-    — xfail until arithmetic + iterator transpilation complete."""
-
-    pytestmark = pytest.mark.xfail(reason=_ARITH_XFAIL, strict=True)
+    """Iterators: over (/), scan (\\), each ('), each-right (/:), each-left (\\:)."""
 
     @pytest.mark.parametrize("q_code,expected", ITER_OVER_SNIPPETS + ITER_EACH_SNIPPETS)
     def test_snippet(self, q_code, expected):

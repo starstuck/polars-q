@@ -85,11 +85,12 @@ _VERB_TOKENS: dict[TT, str] = {
 
 # Adverb token types → their symbol string
 _ADVERB_TOKENS: dict[TT, str] = {
-    TT.ADVERB_OVER:      "/",
-    TT.ADVERB_SCAN:      "\\",
-    TT.ADVERB_EACH:      "'",
-    TT.ADVERB_EACHRIGHT: "/:",
-    TT.ADVERB_EACHLEFT:  "\\:",
+    TT.ADVERB_OVER:       "/",
+    TT.ADVERB_SCAN:       "\\",
+    TT.ADVERB_EACH:       "'",
+    TT.ADVERB_EACHRIGHT:  "/:",
+    TT.ADVERB_EACHLEFT:   "\\:",
+    TT.ADVERB_EACHPRIOR:  "':",
 }
 
 # Token types that can BEGIN a new expression term (after the previous term)
@@ -305,17 +306,19 @@ class Parser:
                 tok.line, tok.col,
             )
 
-        # ── Postfix: bracket application  f[x;y] ──────────────────────────────
-        while self._peek().type == TT.LBRACKET:
-            self._advance()   # consume [
-            args = self._parse_arg_list(TT.RBRACKET)
-            self._expect(TT.RBRACKET)
-            node = Apply(node, tuple(args))
-
-        # ── Postfix: adverbs  +/  +\  f'  f/:  f\: ──────────────────────────
-        while self._peek().type in _ADVERB_TOKENS:
-            adv_tok = self._advance()
-            node = Adverb(node, _ADVERB_TOKENS[adv_tok.type])
+        # ── Postfix: interleaved brackets and adverbs ─────────────────────────
+        # e.g.  f[x]/:  (partial then adverb)  or  f/[x]  (adverb then apply)
+        while True:
+            if self._peek().type == TT.LBRACKET:
+                self._advance()   # consume [
+                args = self._parse_arg_list(TT.RBRACKET)
+                self._expect(TT.RBRACKET)
+                node = Apply(node, tuple(args))
+            elif self._peek().type in _ADVERB_TOKENS:
+                adv_tok = self._advance()
+                node = Adverb(node, _ADVERB_TOKENS[adv_tok.type])
+            else:
+                break
 
         return node
 
@@ -555,6 +558,7 @@ def _fold_terms(terms: list) -> Any:
         "div", "mod", "xexp", "xlog", "like", "ss", "sv", "vs",
         "msum", "mavg", "mmin", "mmax", "mdev", "ema",
         "xbar", "bin", "wavg", "wsum",
+        "each",
     })
 
     for i, node in enumerate(grouped):
