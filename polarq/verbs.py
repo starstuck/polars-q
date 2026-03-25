@@ -503,6 +503,96 @@ q_ss   = QBuiltin("ss",   monad=lambda x: x, dyad=_ss_dyad)
 q_sv   = QBuiltin("sv",   monad=lambda x: x, dyad=_sv_dyad)
 q_vs   = QBuiltin("vs",   monad=lambda x: x, dyad=_vs_dyad)
 
+# ── Type introspection ────────────────────────────────────────────────────────
+
+_KIND_TYPE_NUM = {
+    "b": 1, "h": 5, "i": 6, "j": 7, "e": 8, "f": 9, "c": 10, "s": 11,
+    "p": 12, "d": 14, "t": 19,
+}
+
+def q_type(x) -> QAtom:
+    """type x — return q type number as a short atom."""
+    if isinstance(x, QAtom):
+        return QAtom(-_KIND_TYPE_NUM.get(x.kind, 0), "h")
+    if isinstance(x, QVector):
+        return QAtom(_KIND_TYPE_NUM.get(x.kind, 0), "h")
+    if isinstance(x, str):       # Python str = q char vector
+        return QAtom(10, "h")
+    if isinstance(x, (QList, list)):
+        return QAtom(0, "h")
+    return QAtom(0, "h")
+
+
+# ── Type casting ──────────────────────────────────────────────────────────────
+
+_CAST_KIND = {
+    "b": "b", "h": "h", "i": "i", "j": "j",
+    "e": "e", "f": "f", "c": "c", "s": "s",
+}
+_CAST_DTYPE = {
+    "b": pl.Boolean, "h": pl.Int16, "i": pl.Int32, "j": pl.Int64,
+    "e": pl.Float32, "f": pl.Float64, "c": pl.Utf8, "s": pl.Categorical,
+}
+_CAST_PY = {
+    "b": bool, "h": int, "i": int, "j": int,
+    "e": float, "f": float, "c": str,
+}
+
+def q_cast(type_char: str, x) -> QValue:
+    """
+    \"x\"$y — cast y to the type indicated by type_char.
+    Lowercase: numeric/type cast.  Uppercase: parse from string.
+    """
+    tc = type_char.lower()
+    parse_mode = type_char.isupper()
+
+    # Resolve the value to cast
+    raw = x.value if isinstance(x, QAtom) else x
+
+    if tc == "s":
+        # cast to symbol: string → symbol atom
+        val = str(raw)
+        return QAtom(val, "s")
+
+    if tc not in _CAST_PY:
+        raise QTypeError(f"cast: unknown type char {type_char!r}")
+
+    if parse_mode:
+        # uppercase: parse the string representation
+        src = str(raw)
+        if tc in ("j", "h", "i"):
+            val = int(src)
+        elif tc in ("f", "e"):
+            val = float(src)
+        elif tc == "b":
+            val = bool(int(src))
+        else:
+            val = src
+    else:
+        if tc in ("j", "h", "i"):
+            val = int(raw)
+        elif tc in ("f", "e"):
+            val = float(raw)
+        elif tc == "b":
+            val = bool(raw)
+        else:
+            val = str(raw)
+
+    kind = _CAST_KIND[tc]
+    return QAtom(val, kind)
+
+
+# ── Null checking ─────────────────────────────────────────────────────────────
+
+def q_null(x) -> QAtom:
+    """null x — return 1b if x is null, 0b otherwise."""
+    if x is None:
+        return QAtom(True, "b")
+    if isinstance(x, QAtom):
+        return QAtom(x.is_null(), "b")
+    return QAtom(False, "b")
+
+
 # ── The global verb table (maps q token → QBuiltin) ───────────────────────────
 
 VERB_TABLE: dict[str, QBuiltin] = {

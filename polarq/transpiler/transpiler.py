@@ -109,8 +109,8 @@ class QToPythonTranspiler:
 
     def _expr(self, node: Any) -> py_ast.expr:
         match node:
-            case IntLit(v):
-                return self._qatom_call(v, "j")
+            case IntLit():
+                return self._qatom_call(node.value, node.kind)
             case FloatLit(v):
                 return self._qatom_call(v, "f")
             case BoolLit(v):
@@ -183,7 +183,7 @@ class QToPythonTranspiler:
         elts = [py_ast.Constant(value=i.value) for i in items]
         first = items[0]
         if isinstance(first, IntLit):
-            kind = "j"
+            kind = first.kind
         elif isinstance(first, FloatLit):
             kind = "f"
         elif isinstance(first, BoolLit):

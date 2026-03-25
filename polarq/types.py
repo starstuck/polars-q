@@ -37,6 +37,8 @@ class QAtom:
         if   self.kind == "s": return f"`{self.value}"
         elif self.kind == "b": return "1b" if self.value else "0b"
         elif self.kind == "c": return f'"{self.value}"'
+        elif self.kind == "h": return f"{self.value}h"
+        elif self.kind == "i": return f"{self.value}i"
         elif self.kind == "f":
             v = self.value
             if v != v: return "0nf"          # nan

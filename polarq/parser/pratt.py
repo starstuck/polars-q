@@ -265,7 +265,8 @@ class Parser:
         # ── Literals ──────────────────────────────────────────────────────────
         if tok.type == TT.INT:
             self._advance()
-            node: Any = IntLit(tok.value)
+            int_val, int_kind = tok.value
+            node: Any = IntLit(int_val, int_kind)
         elif tok.type == TT.FLOAT:
             self._advance()
             node = FloatLit(tok.value)

@@ -88,12 +88,12 @@ class TestIntLiterals:
         assert expr("42j") == IntLit(42)
 
     def test_int_suffix(self):
-        """42i  →  IntLit(42)"""
-        assert expr("42i") == IntLit(42)
+        """42i  →  IntLit(42, 'i')"""
+        assert expr("42i") == IntLit(42, "i")
 
     def test_short_suffix(self):
-        """42h  →  IntLit(42)"""
-        assert expr("42h") == IntLit(42)
+        """42h  →  IntLit(42, 'h')"""
+        assert expr("42h") == IntLit(42, "h")
 
     def test_zero(self):
         """0  →  IntLit(0)"""

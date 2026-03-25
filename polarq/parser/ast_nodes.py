@@ -28,6 +28,7 @@ from typing import Any
 @dataclass(frozen=True)
 class IntLit:
     value: int
+    kind:  str = "j"   # "j" long (default), "i" int, "h" short
 
 @dataclass(frozen=True)
 class FloatLit:

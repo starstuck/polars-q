@@ -99,7 +99,7 @@ ATOM_SNIPPETS = [
     pytest.param("0",        "0",      id="int-zero"),
     pytest.param("-1",       "-1",     id="int-neg"),
     pytest.param("42j",      "42",     id="int-j-suffix"),
-    pytest.param("42h",      "42",     id="int-h-suffix"),
+    pytest.param("42h",      "42h",    id="int-h-suffix"),
     pytest.param("3.14",     "3.14f",  id="float"),
     pytest.param("1b",       "1b",     id="bool-true"),
     pytest.param("0b",       "0b",     id="bool-false"),
@@ -359,8 +359,6 @@ LIST_NAV_SNIPPETS = [
 ]
 
 LIST_NULL_SNIPPETS = [
-    pytest.param("null 0N",            "1b",              id="null-int"),
-    pytest.param("null 42",            "0b",              id="null-false"),
     pytest.param("0N ^ 1 0N 3",        "1 1 3",           id="fill"),
     pytest.param("fills 1 0N 0N 4",    "1 1 1 4",         id="fills"),
 ]
@@ -623,9 +621,7 @@ CAST_SNIPPETS = [
 
 
 class TestTypes:
-    """Type introspection (type) — xfail until q type system exposed."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
+    """Type introspection (type)."""
 
     @pytest.mark.parametrize("q_code,expected", TYPE_SNIPPETS)
     def test_snippet(self, q_code, expected):
@@ -633,9 +629,7 @@ class TestTypes:
 
 
 class TestCasting:
-    """Type casting ($) and null checking — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_TRANSPILER, strict=True)
+    """Type casting ($) and null checking."""
 
     @pytest.mark.parametrize("q_code,expected", CAST_SNIPPETS)
     def test_snippet(self, q_code, expected):
@@ -821,19 +815,19 @@ class TestTemporal:
 # §17  META / INTROSPECTION   ref: https://code.kx.com/q/ref/meta/
 # ══════════════════════════════════════════════════════════════════════════════╗
 
+_xfail_kw = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
+
 META_SNIPPETS = [
     pytest.param("x:42\ntype x",            "-7h",             id="type-long"),
-    pytest.param("v:1 2 3\nkey v",          "7h",              id="key-vector-type"),
-    pytest.param("x:42\nshow x",            "42",              id="show"),
-    pytest.param("value {x+y}",             "({x+y};+;x;y)",   id="value-lambda"),
-    pytest.param("parse \"1+2\"",           "(+;1;2)",         id="parse"),
+    pytest.param("v:1 2 3\nkey v",          "7h",              marks=_xfail_kw, id="key-vector-type"),
+    pytest.param("x:42\nshow x",            "42",              marks=_xfail_kw, id="show"),
+    pytest.param("value {x+y}",             "({x+y};+;x;y)",   marks=_xfail_kw, id="value-lambda"),
+    pytest.param("parse \"1+2\"",           "(+;1;2)",         marks=_xfail_kw, id="parse"),
 ]
 
 
 class TestMeta:
-    """Meta functions: type, count, key, show, value, parse — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
+    """Meta functions: type, count, key, show, value, parse."""
 
     @pytest.mark.parametrize("q_code,expected", META_SNIPPETS)
     def test_snippet(self, q_code, expected):

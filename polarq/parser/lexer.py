@@ -293,8 +293,9 @@ class Lexer:
 def _make_token(tt: TT, raw: str, line: int, col: int) -> Token:
     """Construct a Token with the appropriate parsed Python value."""
     if tt == TT.INT:
+        suffix = raw[-1] if raw[-1] in "ijh" else "j"
         val = int(raw.rstrip("ijhN"))
-        return Token(tt, val, line, col)
+        return Token(tt, (val, suffix), line, col)
     if tt == TT.FLOAT:
         val = float(raw.rstrip("fe"))
         return Token(tt, val, line, col)
@@ -322,7 +323,8 @@ def _make_num_token(raw: str, line: int, col: int) -> Token:
     stripped = raw.rstrip("ijhNeEf")
     if "." in stripped or "e" in stripped.lower():
         return Token(TT.FLOAT, float(raw.rstrip("feE")), line, col)
-    return Token(TT.INT, int(raw.rstrip("ijhN")), line, col)
+    suffix = raw[-1] if raw[-1] in "ijh" else "j"
+    return Token(TT.INT, (int(raw.rstrip("ijhN")), suffix), line, col)
 
 
 # ── Convenience function ──────────────────────────────────────────────────────
