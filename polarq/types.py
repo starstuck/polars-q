@@ -152,6 +152,47 @@ class QDict:
     keys:   QValue   # usually QVector[sym]
     values: QValue
 
+    def _key_list(self):
+        if isinstance(self.keys, QVector):
+            return self.keys.series.to_list()
+        if isinstance(self.keys, QList):
+            return [i.value if isinstance(i, QAtom) else i for i in self.keys.items]
+        return [self.keys]
+
+    def _val_list(self):
+        if isinstance(self.values, QVector):
+            return [QAtom(v, self.values.kind) for v in self.values.series.to_list()]
+        if isinstance(self.values, QList):
+            return self.values.items
+        return [self.values]
+
+    def __str__(self) -> str:
+        ks = self._key_list()
+        vs = self._val_list()
+        return "\n".join(f"{k}|{v}" for k, v in zip(ks, vs))
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, QDict):
+            return False
+        # Compare keys and values using _match-style logic
+        def _vec_eq(a, b):
+            if isinstance(a, QVector) and isinstance(b, QVector):
+                if len(a.series) != len(b.series):
+                    return False
+                return bool((a.series == b.series).all())
+            return a == b
+        return _vec_eq(self.keys, other.keys) and _vec_eq(self.values, other.values)
+
+    def __call__(self, key):
+        """Dict indexing: d[`a] → value for key `a."""
+        k = key.value if isinstance(key, QAtom) else key
+        ks = self._key_list()
+        vs = self._val_list()
+        for ki, vi in zip(ks, vs):
+            if ki == k:
+                return vi
+        raise KeyError(f"key not found: {k!r}")
+
     def to_polars(self) -> dict:
         """Convert to {col: Series} for DataFrame construction."""
         ks = self.keys.series.to_list() if isinstance(self.keys, QVector) else self.keys.items

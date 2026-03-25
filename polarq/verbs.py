@@ -74,6 +74,8 @@ def _match(x, y):
         if len(x.series) != len(y.series):
             return QAtom(False, "b")
         return QAtom(bool((x.series == y.series).all()), "b")
+    if isinstance(x, QDict) and isinstance(y, QDict):
+        return QAtom(x == y, "b")
     return QAtom(False, "b")
 
 q_lt  = QBuiltin("lt",  monad=lambda x: x, dyad=_cmp("lt"))
@@ -194,6 +196,7 @@ def q_count_m(x):
     if isinstance(x, QAtom):   return QAtom(1, "j")
     if isinstance(x, QVector): return QAtom(len(x.series), "j")
     if isinstance(x, QList):   return QAtom(len(x.items), "j")
+    if isinstance(x, QDict):   return q_count_m(x.keys)
     if isinstance(x, QTable):  return QAtom(x.frame.collect().height, "j")
     return QAtom(0, "j")
 
@@ -503,6 +506,25 @@ q_ss   = QBuiltin("ss",   monad=lambda x: x, dyad=_ss_dyad)
 q_sv   = QBuiltin("sv",   monad=lambda x: x, dyad=_sv_dyad)
 q_vs   = QBuiltin("vs",   monad=lambda x: x, dyad=_vs_dyad)
 
+# ── Dictionary verbs ─────────────────────────────────────────────────────────
+
+def q_dict_create(keys, values) -> QDict:
+    """x!y — create a dict from keys vector and values vector/list."""
+    return QDict(keys, values)
+
+def q_key(x) -> QValue:
+    """key d — return the keys of a dict."""
+    if isinstance(x, QDict):
+        return x.keys
+    raise QTypeError("key: expected dict")
+
+def q_value(x) -> QValue:
+    """value d — return the values of a dict."""
+    if isinstance(x, QDict):
+        return x.values
+    raise QTypeError("value: expected dict")
+
+
 # ── Type introspection ────────────────────────────────────────────────────────
 
 _KIND_TYPE_NUM = {
@@ -603,7 +625,7 @@ VERB_TABLE: dict[str, QBuiltin] = {
     "all": q_all, "any": q_any,
     "#": QBuiltin("take",  monad=q_count_m,   dyad=lambda x,y: ...),
     "_": QBuiltin("drop",  monad=q_first_m,   dyad=lambda x,y: ...),
-    "!": QBuiltin("key",   monad=q_group_m,   dyad=lambda x,y: ...),
+    "!": QBuiltin("key",   monad=q_group_m,   dyad=q_dict_create),
     "?": QBuiltin("find",  monad=q_distinct_m,dyad=lambda x,y: ...),
     "@": QBuiltin("index", monad=q_first_m,   dyad=lambda x,y: ...),
     ",": q_join,

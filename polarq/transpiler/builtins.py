@@ -83,6 +83,10 @@ VERB_MAP: dict[str, tuple[str, str]] = {
     "$":          ("polarq.verbs", "q_cast"),
     "type":       ("polarq.verbs", "q_type"),
     "null":       ("polarq.verbs", "q_null"),
+    # dict
+    "!":          ("polarq.verbs", "q_dict_create"),
+    "key":        ("polarq.verbs", "q_key"),
+    "value":      ("polarq.verbs", "q_value"),
 }
 
 ADVERB_MAP: dict[str, tuple[str, str]] = {

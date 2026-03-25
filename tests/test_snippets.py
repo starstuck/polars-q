@@ -641,12 +641,12 @@ class TestCasting:
 # ══════════════════════════════════════════════════════════════════════════════╗
 
 DICT_SNIPPETS = [
-    pytest.param("`a`b`c!1 2 3",              "a|1\nb|2\nc|3",  id="create"),
-    pytest.param("d:`a`b!1 2\nd`a",           "1",              id="lookup"),
-    pytest.param("key `a`b!1 2",              "`a`b",           id="keys"),
-    pytest.param("value `a`b!1 2",            "1 2",            id="values"),
-    pytest.param("`a`b!1 2 ~ `a`b!1 2",       "1b",             id="match-dicts"),
-    pytest.param("count `a`b`c!1 2 3",        "3",              id="count-dict"),
+    pytest.param("`a`b`c!1 2 3",              ["a|1", "b|2", "c|3"],  id="create"),
+    pytest.param("d:`a`b!1 2\nd`a",           "1",                    id="lookup"),
+    pytest.param("key(`a`b!1 2)",             "`a`b",                 id="keys"),
+    pytest.param("value(`a`b!1 2)",           "1 2",                  id="values"),
+    pytest.param("(`a`b!1 2) ~ `a`b!1 2",    "1b",                   id="match-dicts"),
+    pytest.param("count(`a`b`c!1 2 3)",       "3",                    id="count-dict"),
 ]
 
 ENUM_SNIPPETS = [
@@ -657,9 +657,7 @@ ENUM_SNIPPETS = [
 
 
 class TestDictionaries:
-    """Dictionary construction and access — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_TRANSPILER, strict=True)
+    """Dictionary construction and access."""
 
     @pytest.mark.parametrize("q_code,expected", DICT_SNIPPETS)
     def test_snippet(self, q_code, expected):

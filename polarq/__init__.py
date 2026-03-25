@@ -38,6 +38,7 @@ from polarq.verbs     import (
     q_count, q_first, q_last, q_reverse, q_where, q_distinct, q_group,
     q_til, q_enlist, q_raze,
     q_type, q_cast, q_null,
+    q_dict_create, q_key, q_value,
     q_neg, q_abs, q_signum, q_ceiling, q_floor,
     q_sqrt, q_exp, q_log, q_reciprocal, q_xexp, q_xlog,
     q_idiv, q_mod,
@@ -49,6 +50,8 @@ from polarq.verbs     import (
 # Named keyword aliases — transpiled q code uses bare names like `neg x`, `abs x`
 type       = q_type   # shadows Python builtin in q exec context
 null       = q_null
+key        = q_key
+value      = q_value
 neg        = q_neg
 abs        = q_abs  # shadows Python builtin intentionally in q exec context
 signum     = q_signum
@@ -141,6 +144,7 @@ __all__ = [
     "QError", "QTypeError", "QLengthError", "QRankError",
     # verb functions (for transpiled code: `from polarq import *`)
     "q_type", "q_cast", "q_null",
+    "q_dict_create", "q_key", "q_value",
     "q_add", "q_sub", "q_mul", "q_div",
     "q_lt", "q_gt", "q_eq", "q_le", "q_ge", "q_not",
     "q_and", "q_or", "q_all", "q_any",
@@ -159,6 +163,7 @@ __all__ = [
     "q_xbar", "q_bin", "q_wavg", "q_wsum",
     # keyword aliases
     "type", "null",
+    "key", "value",
     "neg", "abs", "signum", "ceiling", "floor",
     "sqrt", "exp", "log", "reciprocal", "xexp", "xlog",
     "div", "mod",
