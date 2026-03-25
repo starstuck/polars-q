@@ -32,6 +32,37 @@ from conftest import output_lines
 
 # ── Core test helper ──────────────────────────────────────────────────────────
 
+def _match_lines(actual: list, expected: list) -> bool:
+    """
+    Match actual output lines against expected, supporting two wildcards:
+      "..."          — standalone: matches zero or more consecutive lines
+      "prefix..."    — suffix wildcard: matches any line starting with "prefix"
+    """
+    def _match_from(ai: int, ei: int) -> bool:
+        while ei < len(expected):
+            pat = expected[ei]
+            if pat == "...":
+                ei += 1
+                if ei >= len(expected):
+                    return True   # trailing wildcard matches rest
+                # Greedily advance ai until the rest can match
+                for start in range(ai, len(actual) + 1):
+                    if _match_from(start, ei):
+                        return True
+                return False
+            elif pat.endswith("..."):
+                prefix = pat[:-3]
+                if ai >= len(actual) or not actual[ai].startswith(prefix):
+                    return False
+                ai += 1; ei += 1
+            else:
+                if ai >= len(actual) or actual[ai] != pat:
+                    return False
+                ai += 1; ei += 1
+        return ai == len(actual)
+    return _match_from(0, 0)
+
+
 def check_snippet(
     q_code: "str | list[str]",
     expected: "str | list[str] | callable",
@@ -42,11 +73,18 @@ def check_snippet(
         assert expected(result), f"q: {q_code!r}\npredicate failed, got: {result!r}"
     else:
         expected_list = [expected] if isinstance(expected, str) else expected
-        assert result == expected_list, (
-            f"q: {q_code!r}\n"
-            f"expected: {expected_list!r}\n"
-            f"got:      {result!r}"
-        )
+        if any(isinstance(e, str) and ("..." in e) for e in expected_list):
+            assert _match_lines(result, expected_list), (
+                f"q: {q_code!r}\n"
+                f"expected (wildcard): {expected_list!r}\n"
+                f"got:                 {result!r}"
+            )
+        else:
+            assert result == expected_list, (
+                f"q: {q_code!r}\n"
+                f"expected: {expected_list!r}\n"
+                f"got:      {result!r}"
+            )
 
 
 # ── xfail reason constants ────────────────────────────────────────────────────
@@ -688,7 +726,7 @@ TABLE_SNIPPETS = [
     ),
     pytest.param(
         [TABLE_SETUP, "meta trade"],
-        ["...", "c  | t f a", "-----...", "sym  | s  ", "price| j  ", "vol  | j  "],
+        ["...", "c    | t f a", "-----...", "sym  | s", "price| j", "vol  | j"],
         id="table-meta",
     ),
     pytest.param(
@@ -697,7 +735,7 @@ TABLE_SNIPPETS = [
         id="select-where"),
     pytest.param(
         [TABLE_SETUP, "select avg price by sym from trade"],
-        ["...", "sym | price", "----...", "AAPL| 105f", "GOOG| 200f"],
+        ["...", "sym | price", "----...", "AAPL| 105", "GOOG| 200"],
         id="select-by-avg",
     ),
     pytest.param(
@@ -715,28 +753,28 @@ TABLE_SNIPPETS = [
         ["...", "sym  price vol", "------...", "AAPL 100   1000", "AAPL 110   800"],
         id="delete-where",
     ),
+    pytest.param(
+        [TABLE_SETUP, "10 xbar 15"],
+        ["...", "10"],
+        id="xbar-bucket",
+    ),
 ]
 
 TABLE_OP_SNIPPETS = [
     pytest.param(
         [TABLE_SETUP, "asc trade"],
-        ["...", "..."],
+        ["...", "sym  price vol", "------...", "AAPL 100   1000", "AAPL 110   800", "GOOG 200   500"],
         id="asc-table",
     ),
     pytest.param(
         [TABLE_SETUP, "`price xasc trade"],
-        ["...", "..."],
+        ["...", "sym  price vol", "------...", "AAPL 100   1000", "AAPL 110   800", "GOOG 200   500"],
         id="xasc",
     ),
     pytest.param(
         [TABLE_SETUP, "flip `sym`price`vol!((`AAPL;100;1000))"],
-        ["..."],
+        ["...", "sym  price vol", "------...", "AAPL 100   1000"],
         id="flip-dict-to-table",
-    ),
-    pytest.param(
-        [TABLE_SETUP, "10 xbar 15"],
-        ["...", "10"],
-        id="xbar-bucket",
     ),
     pytest.param(
         ["t1:([] k:`a`b; v:1 2)",
@@ -749,9 +787,7 @@ TABLE_OP_SNIPPETS = [
 
 
 class TestQSQL:
-    """qSQL: select, exec, update, delete with where/by — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_FULL, strict=True)
+    """qSQL: select, exec, update, delete with where/by."""
 
     @pytest.mark.parametrize("q_code,expected", TABLE_SNIPPETS)
     def test_snippet(self, q_code, expected):

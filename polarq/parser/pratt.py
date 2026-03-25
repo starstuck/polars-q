@@ -54,6 +54,7 @@ from polarq.parser.ast_nodes import (
     Lambda,
     Script,
     ColExpr, QSelect, QUpdate, QExec, QDelete,
+    TableLit,
 )
 
 # Verb token types → their q operator string
@@ -330,9 +331,31 @@ class Parser:
         ( expr )            → the inner expression (grouping)
         ( expr ; expr ; … ) → ListLit
         ( )                 → ListLit(()) — empty list / null
+        ([] col:val; …)     → TableLit
         """
         self._expect(TT.LPAREN)
         self._skip_newlines()
+
+        # Table literal: ([] col:val; ...)
+        if self._peek().type == TT.LBRACKET:
+            self._advance()   # consume [
+            self._expect(TT.RBRACKET)   # expect ]
+            self._skip_newlines()
+            cols = []
+            while self._peek().type != TT.RPAREN:
+                if self._peek().type == TT.SEMI:
+                    self._advance()
+                    self._skip_newlines()
+                    continue
+                # expect NAME : expr
+                name_tok = self._expect(TT.NAME)
+                col_name = name_tok.value
+                self._expect(TT.COLON)
+                col_expr = self._parse_expr_seq()
+                cols.append((col_name, col_expr))
+                self._skip_newlines()
+            self._expect(TT.RPAREN)
+            return TableLit(tuple(cols))
 
         if self._peek().type == TT.RPAREN:
             self._advance()

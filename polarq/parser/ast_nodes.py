@@ -171,6 +171,17 @@ class Script:
     stmts: tuple   # tuple of AST nodes
 
 
+# ── Table literal ────────────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class TableLit:
+    """
+    ([] col:val; ...) — inline table constructor.
+    cols is a tuple of (col_name: str, expr: Any) pairs.
+    """
+    cols: tuple   # ((name, expr), ...)
+
+
 # ── qSQL ─────────────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)

@@ -108,6 +108,9 @@ bin        = q_bin   # shadows Python builtin
 wavg       = q_wavg
 wsum       = q_wsum
 from polarq.adverbs   import over, scan, each, each_left, each_right, each_prior
+from polarq.qsql      import (q_select_rt, q_exec_rt, q_update_rt, q_delete_rt,
+                               q_meta, q_tbl_col)
+meta = q_meta
 from polarq.tables    import compile_select, compile_update, compile_aj, compile_wj
 from polarq.temporal  import from_q_timestamp, to_q_timestamp, timestamp_series
 from polarq.ipc       import PolarQServer, PolarQClient
@@ -142,6 +145,9 @@ __all__ = [
     "over", "scan", "each", "each_left", "each_right", "each_prior",
     "compile_select", "compile_update", "compile_aj", "compile_wj",
     "QError", "QTypeError", "QLengthError", "QRankError",
+    # qSQL runtime functions
+    "q_select_rt", "q_exec_rt", "q_update_rt", "q_delete_rt",
+    "q_meta", "q_tbl_col",
     # verb functions (for transpiled code: `from polarq import *`)
     "q_type", "q_cast", "q_null",
     "q_dict_create", "q_key", "q_value",
@@ -162,7 +168,7 @@ __all__ = [
     "q_msum", "q_mavg", "q_mmin", "q_mmax", "q_mdev", "q_ema",
     "q_xbar", "q_bin", "q_wavg", "q_wsum",
     # keyword aliases
-    "type", "null",
+    "type", "null", "meta",
     "key", "value",
     "neg", "abs", "signum", "ceiling", "floor",
     "sqrt", "exp", "log", "reciprocal", "xexp", "xlog",

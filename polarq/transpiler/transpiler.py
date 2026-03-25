@@ -20,8 +20,35 @@ from polarq.parser.ast_nodes import (
     Apply,
     Lambda,
     Script,
+    TableLit,
     ColExpr, QSelect, QUpdate, QExec, QDelete,
 )
+
+# Maps q aggregate function names to Polars Expr methods
+_POLARS_AGG = {
+    "avg":   "mean",
+    "sum":   "sum",
+    "min":   "min",
+    "max":   "max",
+    "count": "len",
+    "first": "first",
+    "last":  "last",
+}
+
+_Q_ARITH_OP = {
+    "+": py_ast.Add,
+    "-": py_ast.Sub,
+    "*": py_ast.Mult,
+    "%": py_ast.Div,
+}
+
+_Q_CMP_OP = {
+    "=":  py_ast.Eq,
+    "<":  py_ast.Lt,
+    ">":  py_ast.Gt,
+    "<=": py_ast.LtE,
+    ">=": py_ast.GtE,
+}
 from polarq.transpiler.builtins import VERB_MAP, ADVERB_MAP
 
 
@@ -149,6 +176,9 @@ class QToPythonTranspiler:
 
             case Adverb(verb, adv):
                 return self._adverb(verb, adv)
+
+            case TableLit(cols):
+                return self._table_lit(cols)
 
             case QSelect() | QUpdate() | QExec() | QDelete():
                 return self._qsql(node)
@@ -296,7 +326,148 @@ class QToPythonTranspiler:
             keywords=[],
         )
 
-    def _qsql(self, node: Any) -> py_ast.expr:
-        raise NotImplementedError(
-            "qSQL transpilation to Polars chains not yet implemented"
+    def _table_lit(self, cols: tuple) -> py_ast.expr:
+        """([] col:val; ...) → QTable.from_dataframe(pl.DataFrame({col: q_tbl_col(val), ...}))"""
+        keys = [py_ast.Constant(value=name) for name, _ in cols]
+        vals = [
+            py_ast.Call(
+                func=py_ast.Name(id="q_tbl_col", ctx=py_ast.Load()),
+                args=[self._expr(expr)], keywords=[],
+            )
+            for _, expr in cols
+        ]
+        dict_node = py_ast.Dict(keys=keys, values=vals)
+        df_call = py_ast.Call(
+            func=py_ast.Attribute(
+                value=py_ast.Name(id="pl", ctx=py_ast.Load()),
+                attr="DataFrame", ctx=py_ast.Load(),
+            ),
+            args=[dict_node], keywords=[],
         )
+        return py_ast.Call(
+            func=py_ast.Attribute(
+                value=py_ast.Name(id="QTable", ctx=py_ast.Load()),
+                attr="from_dataframe", ctx=py_ast.Load(),
+            ),
+            args=[df_call], keywords=[],
+        )
+
+    # ── qSQL helpers ─────────────────────────────────────────────────────────
+
+    def _polars_expr(self, node: Any) -> py_ast.expr:
+        """Convert a q AST node to a Python AST representing a pl.Expr."""
+        match node:
+            case ColExpr(expr, alias):
+                e = self._polars_expr(expr)
+                if alias is not None:
+                    e = py_ast.Call(
+                        func=py_ast.Attribute(value=e, attr="alias", ctx=py_ast.Load()),
+                        args=[py_ast.Constant(value=alias)], keywords=[],
+                    )
+                return e
+            case Name(n):
+                return py_ast.Call(
+                    func=py_ast.Attribute(
+                        value=py_ast.Name(id="pl", ctx=py_ast.Load()),
+                        attr="col", ctx=py_ast.Load(),
+                    ),
+                    args=[py_ast.Constant(value=n)], keywords=[],
+                )
+            case IntLit(v, _):
+                return self._pl_lit(v)
+            case FloatLit(v):
+                return self._pl_lit(v)
+            case BoolLit(v):
+                return self._pl_lit(v)
+            case SymLit(v):
+                return self._pl_lit(v)
+            case StrLit(v):
+                return self._pl_lit(v)
+            case BinOp(op, left, right):
+                return self._polars_binop(op, left, right)
+            case Apply(Name(fname), args) if fname in _POLARS_AGG:
+                method = _POLARS_AGG[fname]
+                arg_expr = self._polars_expr(args[0]) if args else None
+                return py_ast.Call(
+                    func=py_ast.Attribute(value=arg_expr, attr=method, ctx=py_ast.Load()),
+                    args=[], keywords=[],
+                )
+            case _:
+                raise NotImplementedError(
+                    f"polars_expr: unsupported {type(node).__name__}: {node!r}"
+                )
+
+    def _pl_lit(self, value) -> py_ast.expr:
+        return py_ast.Call(
+            func=py_ast.Attribute(
+                value=py_ast.Name(id="pl", ctx=py_ast.Load()),
+                attr="lit", ctx=py_ast.Load(),
+            ),
+            args=[py_ast.Constant(value=value)], keywords=[],
+        )
+
+    def _polars_binop(self, op: str, left: Any, right: Any) -> py_ast.expr:
+        le = self._polars_expr(left)
+        re = self._polars_expr(right)
+        if op in _Q_ARITH_OP:
+            return py_ast.BinOp(left=le, op=_Q_ARITH_OP[op](), right=re)
+        if op in _Q_CMP_OP:
+            return py_ast.Compare(left=le, ops=[_Q_CMP_OP[op]()], comparators=[re])
+        if op == "&":
+            return py_ast.BinOp(left=le, op=py_ast.BitAnd(), right=re)
+        if op == "|":
+            return py_ast.BinOp(left=le, op=py_ast.BitOr(), right=re)
+        raise NotImplementedError(f"polars_binop: unknown op {op!r}")
+
+    def _col_exprs(self, cols: tuple) -> py_ast.expr:
+        return py_ast.List(
+            elts=[self._polars_expr(c) for c in cols],
+            ctx=py_ast.Load(),
+        )
+
+    def _where_exprs(self, where: tuple) -> py_ast.expr:
+        return py_ast.List(
+            elts=[self._polars_expr(w) for w in where],
+            ctx=py_ast.Load(),
+        )
+
+    def _by_exprs(self, by: tuple) -> py_ast.expr:
+        return py_ast.List(
+            elts=[self._polars_expr(c.expr if isinstance(c, ColExpr) else c) for c in by],
+            ctx=py_ast.Load(),
+        )
+
+    def _qsql(self, node: Any) -> py_ast.expr:
+        if isinstance(node, (QSelect, QExec)):
+            fn = "q_select_rt" if isinstance(node, QSelect) else "q_exec_rt"
+            return py_ast.Call(
+                func=py_ast.Name(id=fn, ctx=py_ast.Load()),
+                args=[
+                    self._expr(node.table),
+                    self._col_exprs(node.cols),
+                    self._where_exprs(node.where),
+                    self._by_exprs(node.by),
+                ],
+                keywords=[],
+            )
+        if isinstance(node, QUpdate):
+            return py_ast.Call(
+                func=py_ast.Name(id="q_update_rt", ctx=py_ast.Load()),
+                args=[
+                    self._expr(node.table),
+                    self._col_exprs(node.cols),
+                    self._where_exprs(node.where),
+                ],
+                keywords=[],
+            )
+        if isinstance(node, QDelete):
+            return py_ast.Call(
+                func=py_ast.Name(id="q_delete_rt", ctx=py_ast.Load()),
+                args=[
+                    self._expr(node.table),
+                    self._col_exprs(node.cols),
+                    self._where_exprs(node.where),
+                ],
+                keywords=[],
+            )
+        raise NotImplementedError(f"_qsql: unknown node {type(node).__name__}")

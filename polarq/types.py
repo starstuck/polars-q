@@ -81,6 +81,8 @@ KIND_TO_POLARS = {
     "p": pl.Datetime("ns"), "d": pl.Date, "t": pl.Time,
 }
 
+POLARS_TO_KIND = {v: k for k, v in KIND_TO_POLARS.items()}
+
 @dataclass(slots=True)
 class QVector:
     """
@@ -220,6 +222,32 @@ class QTable:
         schema = self.frame.schema
         return {"cols": list(schema.keys()), "types": list(schema.values())}
 
+    def __str__(self) -> str:
+        df = self.frame.collect()
+        if df.is_empty():
+            return "(empty table)"
+        cols = df.columns
+        # Format each cell value in q style
+        def _fmt(val) -> str:
+            if val is None:
+                return ""
+            if isinstance(val, float):
+                import math
+                if math.isnan(val):
+                    return "0n"
+                # Use 4 sig figs without trailing 'f' for table display
+                return f"{val:.6g}"
+            return str(val)
+
+        str_data = {c: [_fmt(v) for v in df[c]] for c in cols}
+        widths   = {c: max(len(c), max((len(s) for s in str_data[c]), default=0))
+                    for c in cols}
+        header = " ".join(c.ljust(widths[c]) for c in cols)
+        sep    = "-" * sum(widths[c] + 1 for c in cols[:-1]) + "-" * widths[cols[-1]]
+        rows   = [" ".join(str_data[c][i].ljust(widths[c]) for c in cols)
+                  for i in range(len(df))]
+        return "\n".join([header, sep] + rows)
+
     def __repr__(self):
         return self.frame.collect().__repr__()
 
@@ -231,6 +259,45 @@ class QKeyedTable:
     def to_polars(self) -> pl.LazyFrame:
         """Merge key and value columns for join operations."""
         return pl.concat([self.key_table.frame, self.val_table.frame], how="horizontal")
+
+    def __str__(self) -> str:
+        key_df = self.key_table.frame.collect()
+        val_df = self.val_table.frame.collect()
+
+        def _fmt(val) -> str:
+            if val is None:
+                return ""
+            if isinstance(val, float):
+                import math
+                if math.isnan(val):
+                    return "0n"
+                return f"{val:.6g}"
+            return str(val)
+
+        key_cols = key_df.columns
+        val_cols = val_df.columns
+        key_str  = {c: [_fmt(v) for v in key_df[c]] for c in key_cols}
+        val_str  = {c: [_fmt(v) for v in val_df[c]] for c in val_cols}
+        kw = {c: max(len(c), max((len(s) for s in key_str[c]), default=0)) for c in key_cols}
+        vw = {c: max(len(c), max((len(s) for s in val_str[c]), default=0)) for c in val_cols}
+
+        key_part_w = sum(kw[c] for c in key_cols) + len(key_cols) - 1
+        val_part_w = sum(vw[c] for c in val_cols) + len(val_cols) - 1
+
+        def _row(kdata, vdata):
+            kp = " ".join(kdata[c].ljust(kw[c]) for c in key_cols)
+            vp = " ".join(vdata[c].ljust(vw[c]) for c in val_cols)
+            return kp + "| " + vp
+
+        header = _row({c: c for c in key_cols}, {c: c for c in val_cols})
+        sep    = "-" * key_part_w + "| " + "-" * val_part_w
+        rows   = [_row({c: key_str[c][i] for c in key_cols},
+                       {c: val_str[c][i] for c in val_cols})
+                  for i in range(len(key_df))]
+        return "\n".join([header, sep] + rows)
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 # ── Functions ─────────────────────────────────────────────────────────────────
 
