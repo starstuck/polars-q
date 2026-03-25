@@ -65,6 +65,35 @@ class QToPythonTranspiler:
             return py_ast.Assign(
                 targets=[target], value=value, lineno=0, col_offset=0
             )
+        # x:expr inside if/do/while args parses as BinOp(':', Name(x), expr)
+        if isinstance(node, BinOp) and node.op == ":" and isinstance(node.left, Name):
+            target = py_ast.Name(id=node.left.name, ctx=py_ast.Store())
+            value  = self._expr(node.right)
+            return py_ast.Assign(
+                targets=[target], value=value, lineno=0, col_offset=0
+            )
+        # if[cond; stmts...]
+        if isinstance(node, Apply) and isinstance(node.func, Name) and node.func.name == "if":
+            cond = self._expr(node.args[0])
+            body = [self._stmt(s) for s in node.args[1:]] or [py_ast.Pass()]
+            return py_ast.If(test=cond, body=body, orelse=[], lineno=0, col_offset=0)
+        # do[n; stmts...]
+        if isinstance(node, Apply) and isinstance(node.func, Name) and node.func.name == "do":
+            n_expr = self._expr(node.args[0])
+            body   = [self._stmt(s) for s in node.args[1:]] or [py_ast.Pass()]
+            return py_ast.For(
+                target=py_ast.Name(id="_q_i", ctx=py_ast.Store()),
+                iter=py_ast.Call(
+                    func=py_ast.Name(id="range", ctx=py_ast.Load()),
+                    args=[n_expr], keywords=[],
+                ),
+                body=body, orelse=[], lineno=0, col_offset=0,
+            )
+        # while[cond; stmts...]
+        if isinstance(node, Apply) and isinstance(node.func, Name) and node.func.name == "while":
+            cond = self._expr(node.args[0])
+            body = [self._stmt(s) for s in node.args[1:]] or [py_ast.Pass()]
+            return py_ast.While(test=cond, body=body, orelse=[], lineno=0, col_offset=0)
         # Any expression as a standalone statement
         return py_ast.Expr(value=self._expr(node), lineno=0, col_offset=0)
 
@@ -110,6 +139,9 @@ class QToPythonTranspiler:
                 return self._mon_op(op, right)
 
             case Apply(func, args):
+                # $[cond;t;f] conditional — handled as expression
+                if isinstance(func, Verb) and func.op == "$":
+                    return self._cond_expr(args)
                 return self._apply(func, args)
 
             case Lambda(params, body):
@@ -125,6 +157,25 @@ class QToPythonTranspiler:
                 raise NotImplementedError(
                     f"transpiler: unsupported node type {type(node).__name__}: {node!r}"
                 )
+
+    def _cond_expr(self, args: tuple) -> py_ast.expr:
+        """$[c;t;f] and chained $[c1;t1;c2;t2;f] → nested Python ternary."""
+        # args must be odd-length ≥ 3: (c1,t1, c2,t2, ..., else)
+        if len(args) < 3 or len(args) % 2 == 0:
+            raise NotImplementedError(
+                f"$[...] requires an odd number of args ≥ 3, got {len(args)}"
+            )
+        # Build right-to-left: start with the else branch
+        result = self._expr(args[-1])
+        # Walk pairs (cond, then) from right to left
+        pairs = list(zip(args[::2], args[1::2]))  # [(c1,t1), (c2,t2), ...]
+        for cond_node, then_node in reversed(pairs):
+            result = py_ast.IfExp(
+                test=self._expr(cond_node),
+                body=self._expr(then_node),
+                orelse=result,
+            )
+        return result
 
     def _vector_lit(self, items: tuple) -> py_ast.expr:
         # QVector.from_items([...], kind)

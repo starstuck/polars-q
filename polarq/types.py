@@ -55,6 +55,17 @@ class QAtom:
         if isinstance(other, QAtom): return self.value - other.value
         return self.value - other
 
+    def __bool__(self) -> bool:
+        if self.kind == "b": return bool(self.value)
+        if self.kind in ("f", "e"):
+            return self.value == self.value and self.value != 0  # nan → False
+        if self.kind in ("j", "i", "h"): return self.value != 0
+        return self.value is not None
+
+    def __index__(self) -> int:
+        if self.kind in ("j", "i", "h"): return int(self.value)
+        raise TypeError(f"QAtom of kind '{self.kind}' cannot be used as an integer index")
+
     def is_null(self) -> bool:
         if self.kind in ("f","e"): return self.value != self.value  # nan
         return self.value is None

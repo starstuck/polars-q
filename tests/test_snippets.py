@@ -578,7 +578,7 @@ class TestLambdas:
 CONTROL_SNIPPETS = [
     pytest.param("$[1b;42;99]",                      "42",   id="cond-true"),
     pytest.param("$[0b;42;99]",                      "99",   id="cond-false"),
-    pytest.param("$[1b;`yes;0b;`maybe;`no]",         "yes",  id="cond-chain"),
+    pytest.param("$[1b;`yes;0b;`maybe;`no]",         "`yes", id="cond-chain"),
     pytest.param("x:0\nif[1b;x:42]\nx",              "42",   id="if-true"),
     pytest.param("x:0\nif[0b;x:99]\nx",              "0",    id="if-false"),
     pytest.param("x:0\ndo[3;x:x+1]\nx",              "3",    id="do-loop"),
@@ -587,9 +587,7 @@ CONTROL_SNIPPETS = [
 
 
 class TestControlFlow:
-    """Control flow: $[cond;t;f], if, do, while — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_TRANSPILER, strict=True)
+    """Control flow: $[cond;t;f], if, do, while."""
 
     @pytest.mark.parametrize("q_code,expected", CONTROL_SNIPPETS)
     def test_snippet(self, q_code, expected):
