@@ -166,6 +166,8 @@ class QDict:
             return [QAtom(v, self.values.kind) for v in self.values.series.to_list()]
         if isinstance(self.values, QList):
             return self.values.items
+        if isinstance(self.values, list):
+            return self.values
         return [self.values]
 
     def __str__(self) -> str:

@@ -87,6 +87,11 @@ VERB_MAP: dict[str, tuple[str, str]] = {
     "!":          ("polarq.verbs", "q_dict_create"),
     "key":        ("polarq.verbs", "q_key"),
     "value":      ("polarq.verbs", "q_value"),
+    # table ops
+    "flip":       ("polarq.verbs", "q_flip"),
+    "asc":        ("polarq.verbs", "q_asc"),
+    "xasc":       ("polarq.verbs", "q_xasc"),
+    "lj":         ("polarq.verbs", "q_lj"),
 }
 
 ADVERB_MAP: dict[str, tuple[str, str]] = {

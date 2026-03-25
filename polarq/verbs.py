@@ -615,6 +615,73 @@ def q_null(x) -> QAtom:
     return QAtom(False, "b")
 
 
+# ── Table operations ──────────────────────────────────────────────────────────
+
+def q_flip_m(x):
+    """flip x — dict→table or table→dict."""
+    if isinstance(x, QDict):
+        ks = x._key_list()
+        vs = x._val_list()
+        data = {}
+        for k, v in zip(ks, vs):
+            if isinstance(v, QVector):
+                data[k] = v.series
+            elif isinstance(v, QAtom):
+                data[k] = pl.Series([v.value])
+            elif isinstance(v, QList):
+                raw = [i.value if isinstance(i, QAtom) else i for i in v.items]
+                data[k] = raw
+            else:
+                data[k] = [v]
+        return QTable(pl.DataFrame(data).lazy())
+    if isinstance(x, QTable):
+        df = x.frame.collect()
+        keys = QVector.from_items(df.columns, "s")
+        vals = QList([QVector.from_series(df[c]) for c in df.columns])
+        return QDict(keys, vals)
+    return x  # vectors: identity for 1D
+
+
+def q_asc_m(x):
+    """asc x — sort ascending."""
+    if isinstance(x, QTable):
+        cols = list(x.frame.collect_schema().names())
+        return QTable(x.frame.sort(cols))
+    if isinstance(x, QVector):
+        return QVector(x.series.sort(), x.kind)
+    return x
+
+
+def q_xasc_d(cols, table):
+    """cols xasc table — sort table by named column(s) ascending."""
+    if not isinstance(table, QTable):
+        raise QTypeError("xasc: right arg must be a table")
+    if isinstance(cols, QAtom) and cols.kind == "s":
+        sort_cols = [cols.value]
+    elif isinstance(cols, QVector) and cols.kind == "s":
+        sort_cols = cols.series.to_list()
+    else:
+        sort_cols = [str(cols.value if isinstance(cols, QAtom) else cols)]
+    return QTable(table.frame.sort(sort_cols))
+
+
+def q_lj_d(t1, t2):
+    """t1 lj t2 — left join keyed table t2 onto t1."""
+    if not isinstance(t1, QTable):
+        raise QTypeError("lj: left arg must be a table")
+    if not isinstance(t2, QKeyedTable):
+        raise QTypeError("lj: right arg must be a keyed table")
+    key_cols = list(t2.key_table.frame.collect_schema().names())
+    t2_full = t2.to_polars()
+    return QTable(t1.frame.join(t2_full, on=key_cols, how="left"))
+
+
+q_flip = QBuiltin("flip", monad=q_flip_m, dyad=None)
+q_asc  = QBuiltin("asc",  monad=q_asc_m,  dyad=None)
+q_xasc = QBuiltin("xasc", monad=None,     dyad=q_xasc_d)
+q_lj   = QBuiltin("lj",   monad=None,     dyad=q_lj_d)
+
+
 # ── The global verb table (maps q token → QBuiltin) ───────────────────────────
 
 VERB_TABLE: dict[str, QBuiltin] = {

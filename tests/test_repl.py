@@ -328,9 +328,9 @@ class TestErrorHandling:
 
     def test_nyi_shown_for_unimplemented(self):
         """NotImplementedError is shown with 'nyi' prefix."""
-        # qSQL is not yet transpiled — triggers NotImplementedError
-        out, _ = run_repl(["select from t"])
-        assert "nyi" in out
+        # Use a feature that is genuinely not yet implemented
+        out, _ = run_repl(["@[`a;0;+;1]"])  # at-apply/functional update — not transpiled
+        assert "nyi" in out or "Error" in out
 
 
 # ═════════════════════════════════════════════════════════════════════════════

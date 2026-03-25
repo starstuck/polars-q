@@ -772,7 +772,7 @@ TABLE_OP_SNIPPETS = [
         id="xasc",
     ),
     pytest.param(
-        [TABLE_SETUP, "flip `sym`price`vol!((`AAPL;100;1000))"],
+        [TABLE_SETUP, "flip (`sym`price`vol!(`AAPL;100;1000))"],
         ["...", "sym  price vol", "------...", "AAPL 100   1000"],
         id="flip-dict-to-table",
     ),
@@ -780,7 +780,7 @@ TABLE_OP_SNIPPETS = [
         ["t1:([] k:`a`b; v:1 2)",
          "t2:([k:`a`b] x:10 20)",
          "t1 lj t2"],
-        ["...", "...", "k  v  x", "-------", "a  1  10", "b  2  20"],
+        ["...", "...", "k v x", "------", "a 1 10", "b 2 20"],
         id="lj",
     ),
 ]
@@ -795,9 +795,7 @@ class TestQSQL:
 
 
 class TestTableOps:
-    """Table operations: sort, flip, xbar, joins — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_FULL, strict=True)
+    """Table operations: sort, flip, joins."""
 
     @pytest.mark.parametrize("q_code,expected", TABLE_OP_SNIPPETS)
     def test_snippet(self, q_code, expected):

@@ -181,6 +181,16 @@ class TableLit:
     """
     cols: tuple   # ((name, expr), ...)
 
+@dataclass(frozen=True)
+class KeyedTableLit:
+    """
+    ([key_col:val; ...] val_col:val; ...) — keyed table constructor.
+    key_cols: tuple of (name, expr) pairs for key columns.
+    val_cols: tuple of (name, expr) pairs for value columns.
+    """
+    key_cols: tuple   # ((name, expr), ...)
+    val_cols: tuple   # ((name, expr), ...)
+
 
 # ── qSQL ─────────────────────────────────────────────────────────────────────
 

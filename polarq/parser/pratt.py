@@ -54,7 +54,7 @@ from polarq.parser.ast_nodes import (
     Lambda,
     Script,
     ColExpr, QSelect, QUpdate, QExec, QDelete,
-    TableLit,
+    TableLit, KeyedTableLit,
 )
 
 # Verb token types → their q operator string
@@ -336,26 +336,45 @@ class Parser:
         self._expect(TT.LPAREN)
         self._skip_newlines()
 
-        # Table literal: ([] col:val; ...)
+        # Table literal: ([] col:val; ...)  or keyed table ([key:val] val:val; ...)
         if self._peek().type == TT.LBRACKET:
             self._advance()   # consume [
-            self._expect(TT.RBRACKET)   # expect ]
-            self._skip_newlines()
-            cols = []
-            while self._peek().type != TT.RPAREN:
-                if self._peek().type == TT.SEMI:
-                    self._advance()
-                    self._skip_newlines()
-                    continue
-                # expect NAME : expr
-                name_tok = self._expect(TT.NAME)
-                col_name = name_tok.value
-                self._expect(TT.COLON)
-                col_expr = self._parse_expr_seq()
-                cols.append((col_name, col_expr))
+            if self._peek().type == TT.RBRACKET:
+                # Unkeyed: ([] col:val; ...)
+                self._advance()   # consume ]
                 self._skip_newlines()
-            self._expect(TT.RPAREN)
-            return TableLit(tuple(cols))
+                cols = []
+                while self._peek().type != TT.RPAREN:
+                    if self._peek().type == TT.SEMI:
+                        self._advance(); self._skip_newlines(); continue
+                    name_tok = self._expect(TT.NAME)
+                    self._expect(TT.COLON)
+                    cols.append((name_tok.value, self._parse_expr_seq()))
+                    self._skip_newlines()
+                self._expect(TT.RPAREN)
+                return TableLit(tuple(cols))
+            else:
+                # Keyed: ([key_col:val; ...] val_col:val; ...)
+                key_cols = []
+                while self._peek().type != TT.RBRACKET:
+                    if self._peek().type == TT.SEMI:
+                        self._advance(); self._skip_newlines(); continue
+                    name_tok = self._expect(TT.NAME)
+                    self._expect(TT.COLON)
+                    key_cols.append((name_tok.value, self._parse_qsql_col_expr()))
+                    self._skip_newlines()
+                self._expect(TT.RBRACKET)
+                self._skip_newlines()
+                val_cols = []
+                while self._peek().type != TT.RPAREN:
+                    if self._peek().type == TT.SEMI:
+                        self._advance(); self._skip_newlines(); continue
+                    name_tok = self._expect(TT.NAME)
+                    self._expect(TT.COLON)
+                    val_cols.append((name_tok.value, self._parse_expr_seq()))
+                    self._skip_newlines()
+                self._expect(TT.RPAREN)
+                return KeyedTableLit(tuple(key_cols), tuple(val_cols))
 
         if self._peek().type == TT.RPAREN:
             self._advance()
@@ -523,7 +542,7 @@ class Parser:
         """
         terms = []
         _STOP = {TT.COMMA, TT.KW_BY, TT.KW_FROM, TT.KW_WHERE,
-                 TT.SEMI, TT.NEWLINE, TT.EOF}
+                 TT.SEMI, TT.NEWLINE, TT.EOF, TT.RBRACKET}
 
         while self._peek().type not in _STOP:
             terms.append(self._parse_term())
@@ -582,6 +601,8 @@ def _fold_terms(terms: list) -> Any:
         "div", "mod", "xexp", "xlog", "like", "ss", "sv", "vs",
         "msum", "mavg", "mmin", "mmax", "mdev", "ema",
         "xbar", "bin", "wavg", "wsum",
+        "xasc", "xdesc",
+        "lj", "aj", "uj", "pj",
         "each",
     })
 

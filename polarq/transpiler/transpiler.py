@@ -20,7 +20,7 @@ from polarq.parser.ast_nodes import (
     Apply,
     Lambda,
     Script,
-    TableLit,
+    TableLit, KeyedTableLit,
     ColExpr, QSelect, QUpdate, QExec, QDelete,
 )
 
@@ -179,6 +179,9 @@ class QToPythonTranspiler:
 
             case TableLit(cols):
                 return self._table_lit(cols)
+
+            case KeyedTableLit(key_cols, val_cols):
+                return self._keyed_table_lit(key_cols, val_cols)
 
             case QSelect() | QUpdate() | QExec() | QDelete():
                 return self._qsql(node)
@@ -350,6 +353,37 @@ class QToPythonTranspiler:
                 attr="from_dataframe", ctx=py_ast.Load(),
             ),
             args=[df_call], keywords=[],
+        )
+
+    def _keyed_table_lit(self, key_cols: tuple, val_cols: tuple) -> py_ast.expr:
+        """([key:val] val:val; ...) → QKeyedTable(key_QTable, val_QTable)"""
+        def _make_tbl(cols):
+            keys = [py_ast.Constant(value=name) for name, _ in cols]
+            vals = [
+                py_ast.Call(
+                    func=py_ast.Name(id="q_tbl_col", ctx=py_ast.Load()),
+                    args=[self._expr(expr)], keywords=[],
+                )
+                for _, expr in cols
+            ]
+            return py_ast.Call(
+                func=py_ast.Attribute(
+                    value=py_ast.Name(id="QTable", ctx=py_ast.Load()),
+                    attr="from_dataframe", ctx=py_ast.Load(),
+                ),
+                args=[py_ast.Call(
+                    func=py_ast.Attribute(
+                        value=py_ast.Name(id="pl", ctx=py_ast.Load()),
+                        attr="DataFrame", ctx=py_ast.Load(),
+                    ),
+                    args=[py_ast.Dict(keys=keys, values=vals)], keywords=[],
+                )],
+                keywords=[],
+            )
+        return py_ast.Call(
+            func=py_ast.Name(id="QKeyedTable", ctx=py_ast.Load()),
+            args=[_make_tbl(key_cols), _make_tbl(val_cols)],
+            keywords=[],
         )
 
     # ── qSQL helpers ─────────────────────────────────────────────────────────
