@@ -101,6 +101,11 @@ def scan(fn, x, init=None):
     for item in (items if init is not None else items[1:]):
         acc = _call(fn, acc, item)
         results.append(acc)
+    # scan always returns a vector (never unwraps a single-element result)
+    if all(isinstance(r, QAtom) and r.kind == results[0].kind for r in results):
+        kind = results[0].kind
+        dtype = KIND_TO_POLARS.get(kind)
+        return QVector(pl.Series([r.value for r in results], dtype=dtype), kind)
     return _collect(results)
 
 
