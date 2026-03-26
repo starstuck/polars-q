@@ -42,6 +42,7 @@ import pytest
 from polarq.parser import parse, parse_expr
 from polarq.parser.ast_nodes import (
     IntLit, FloatLit, BoolLit, SymLit, StrLit, NullLit,
+    DateLit, TimestampLit,
     VectorLit, ListLit,
     Name, Assign,
     Verb, BinOp, MonOp, Adverb,
@@ -787,7 +788,6 @@ class TestProjections:
         # Already works — gap is represented as None in args tuple
         assert node == Apply(Name("f"), (None, IntLit(1)))
 
-    @pytest.mark.skip(reason="double-gap projections not yet validated end-to-end")
     def test_projection_two_gaps(self):
         """f[;1;]  →  Apply(Name('f'), (None, IntLit(1), None))"""
         node = expr("f[;1;]")
@@ -804,17 +804,15 @@ class TestTemporalLiterals:
       2024.01.15D12:30  — timestamp
     """
 
-    @pytest.mark.skip(reason="temporal literal tokenisation not yet implemented")
     def test_date_literal(self):
-        """2024.01.15  →  DateLit(date(2024, 1, 15))"""
+        """2024.01.15  →  DateLit("2024.01.15")"""
         node = expr("2024.01.15")
-        # assert isinstance(node, DateLit)
+        assert node == DateLit("2024.01.15")
 
-    @pytest.mark.skip(reason="temporal literal tokenisation not yet implemented")
     def test_timestamp_literal(self):
-        """2024.01.15D12:30:00.000000000"""
+        """2024.01.15D12:30:00.000000000  →  TimestampLit("2024.01.15D12:30:00.000000000")"""
         node = expr("2024.01.15D12:30:00.000000000")
-        # assert isinstance(node, TimestampLit)
+        assert node == TimestampLit("2024.01.15D12:30:00.000000000")
 
 
 class TestNamespaceAssignment:
@@ -824,7 +822,6 @@ class TestNamespaceAssignment:
     Assigns `foo` inside the `.myns` namespace frame.
     """
 
-    @pytest.mark.skip(reason="namespace assignment parsing not yet validated")
     def test_dotted_assign(self):
         """.myns.foo:42  →  Assign('.myns.foo', IntLit(42))"""
         node = expr(".myns.foo:42")
