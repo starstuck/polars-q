@@ -427,9 +427,7 @@ class TestListSearch:
 
 
 class TestListSets:
-    """Set operations: union, inter, except — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
+    """Set operations: union, inter, except."""
 
     @pytest.mark.parametrize("q_code,expected", LIST_SET_SNIPPETS)
     def test_snippet(self, q_code, expected):
@@ -437,9 +435,7 @@ class TestListSets:
 
 
 class TestListNav:
-    """Navigation: next, prev, xprev — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
+    """Navigation: next, prev, xprev."""
 
     @pytest.mark.parametrize("q_code,expected", LIST_NAV_SNIPPETS)
     def test_snippet(self, q_code, expected):
@@ -447,9 +443,7 @@ class TestListNav:
 
 
 class TestListNull:
-    """Null handling: null, fill (^), fills — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_TRANSPILER, strict=True)
+    """Null handling: null, fill (^), fills."""
 
     @pytest.mark.parametrize("q_code,expected", LIST_NULL_SNIPPETS)
     def test_snippet(self, q_code, expected):
@@ -699,9 +693,7 @@ class TestDictionaries:
 
 
 class TestEnumerations:
-    """Enumerations ($, ?) — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_TRANSPILER, strict=True)
+    """Enumerations ($, ?)."""
 
     @pytest.mark.parametrize("q_code,expected", ENUM_SNIPPETS)
     def test_snippet(self, q_code, expected):

@@ -283,10 +283,16 @@ class QToPythonTranspiler:
 
     def _vector_lit(self, items: tuple) -> py_ast.expr:
         # QVector.from_items([...], kind)
-        # Use raw constant values — QAtom wrapping is only for scalar atoms
-        elts = [py_ast.Constant(value=i.value) for i in items]
-        first = items[0]
-        if isinstance(first, IntLit):
+        # NullLit items emit None; all others emit their raw value
+        elts = [
+            py_ast.Constant(value=None) if isinstance(i, NullLit)
+            else py_ast.Constant(value=i.value)
+            for i in items
+        ]
+        first = next((i for i in items if not isinstance(i, NullLit)), None)
+        if first is None:
+            kind = "j"  # all-null vector defaults to long
+        elif isinstance(first, IntLit):
             kind = first.kind
         elif isinstance(first, FloatLit):
             kind = "f"
@@ -310,6 +316,27 @@ class QToPythonTranspiler:
         )
 
     def _bin_op(self, op: str, left: Any, right: Any) -> py_ast.expr:
+        # `sym$y where sym is a multi-char symbol — enumeration cast, not type cast
+        if op == "$" and isinstance(left, SymLit) and len(left.value) > 1:
+            return py_ast.Call(
+                func=py_ast.Name(id="q_enum_cast", ctx=py_ast.Load()),
+                args=[
+                    py_ast.Name(id=left.value, ctx=py_ast.Load()),
+                    self._expr(right),
+                ],
+                keywords=[],
+            )
+        # sym?y where sym is a variable name — enum-extend (falls back to find for non-sym)
+        if op == "?" and isinstance(left, Name):
+            return py_ast.Call(
+                func=py_ast.Name(id="q_enum_extend", ctx=py_ast.Load()),
+                args=[
+                    py_ast.Constant(value=left.name),
+                    self._expr(left),
+                    self._expr(right),
+                ],
+                keywords=[],
+            )
         ref = VERB_MAP.get(op)
         if ref:
             module, name = ref

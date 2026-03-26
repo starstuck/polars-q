@@ -116,7 +116,7 @@ _EXPR_START = frozenset({
 })
 
 # Literal node types that can be grouped into a VectorLit
-_SCALAR_LIT_TYPES = (IntLit, FloatLit, BoolLit, SymLit)
+_SCALAR_LIT_TYPES = (IntLit, FloatLit, BoolLit, SymLit, NullLit)
 
 
 # ── Public entry points ───────────────────────────────────────────────────────
@@ -632,6 +632,8 @@ def _fold_terms(terms: list) -> Any:
         "set",
         "rotate", "sublist",
         "in", "within",
+        "union", "inter", "except",
+        "xprev",
     })
 
     for i, node in enumerate(grouped):
@@ -679,10 +681,17 @@ def _group_literals(terms: list) -> list:
             out.append(t)
             i += 1
             continue
-        # Scan for a run of the same literal type
+        # Scan for a run of the same literal type.
+        # NullLit is allowed inside IntLit or FloatLit runs (typed nulls).
         j = i + 1
-        while j < len(terms) and type(terms[j]) is type(t):
-            j += 1
+        while j < len(terms):
+            tj = terms[j]
+            if type(tj) is type(t):
+                j += 1
+            elif isinstance(t, (IntLit, FloatLit)) and isinstance(tj, NullLit):
+                j += 1
+            else:
+                break
         run = terms[i:j]
         # If this is a run of IntLit and the very next item is a BoolLit,
         # absorb it: the trailing `b` suffix coerces the whole run to boolean.

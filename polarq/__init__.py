@@ -23,7 +23,7 @@ Typical usage in pure Python:
     loadq("strategy.q", q.env)
 """
 
-from polarq.types     import (QAtom, QVector, QList, QDict,
+from polarq.types     import (QAtom, QVector, QList, QDict, QEnum,
                                QTable, QKeyedTable, QLambda, QFn,
                                QBuiltin, QAdverb, QNull, qnull)
 from polarq.env       import QEnv
@@ -50,6 +50,10 @@ from polarq.verbs     import (
     q_zero_colon, q_one_colon, q_read0, q_read1, q_get, q_set,
     q_take, q_drop, q_rotate, q_sublist,
     q_find, q_in, q_within,
+    q_enum_cast, q_enum_extend,
+    q_union, q_inter, q_except,
+    q_next, q_prev, q_xprev,
+    q_fill, q_fills,
 )
 
 # Named keyword aliases — transpiled q code uses bare names like `neg x`, `abs x`
@@ -118,6 +122,13 @@ xbar       = q_xbar
 bin        = q_bin   # shadows Python builtin
 wavg       = q_wavg
 wsum       = q_wsum
+# Set ops / navigation / null handling
+union      = q_union
+inter      = q_inter
+fills      = q_fills
+next       = q_next   # shadows Python builtin in q exec context
+prev       = q_prev
+xprev      = q_xprev
 # I/O
 csv        = ","          # q's csv separator character
 read0      = q_read0
@@ -200,10 +211,21 @@ __all__ = [
     "sums", "prds", "maxs", "mins", "avgs", "deltas", "ratios", "differ",
     "msum", "mavg", "mmin", "mmax", "mdev", "ema",
     "xbar", "bin", "wavg", "wsum",
-    # find / membership
+    # find / membership / enumeration
     "q_find", "q_in", "q_within",
+    "q_enum_cast", "q_enum_extend",
+    "QEnum",
     # slicing
     "q_take", "q_drop", "q_rotate", "q_sublist",
+    # set ops
+    "q_union", "q_inter", "q_except",
+    "union", "inter",
+    # navigation
+    "q_next", "q_prev", "q_xprev",
+    "next", "prev", "xprev",
+    # null handling
+    "q_fill", "q_fills",
+    "fills",
     # I/O
     "q_zero_colon", "q_one_colon", "q_read0", "q_read1", "q_get", "q_set",
     "csv", "read0", "read1", "get", "set",

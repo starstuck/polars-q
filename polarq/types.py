@@ -122,6 +122,7 @@ class QVector:
 
     def __str__(self):
         """q-style display: space-separated elements."""
+        import math as _math
         if self.kind == "b":
             return "".join("1" if v else "0" for v in self.series) + "b"
         elif self.kind == "s":
@@ -129,9 +130,13 @@ class QVector:
         elif self.kind == "c":
             return " ".join(f'"{v}"' for v in self.series)
         elif self.kind in ("f", "e"):
-            return " ".join(f"{v:.4g}" for v in self.series.to_list())
+            def _fmt_f(v):
+                if v is None or (isinstance(v, float) and _math.isnan(v)):
+                    return "0n"
+                return f"{v:.4g}"
+            return " ".join(_fmt_f(v) for v in self.series.to_list())
         else:
-            return " ".join(str(v) for v in self.series.to_list())
+            return " ".join("0N" if v is None else str(v) for v in self.series.to_list())
 
     # q-style indexing: v[2], v[0 1 2], v[::] (elision)
     def __getitem__(self, idx):
@@ -140,6 +145,24 @@ class QVector:
         if isinstance(idx, QVector):
             return QVector(self.series[idx.series.to_list()], self.kind)
         return QAtom(self.series[idx], self.kind)
+
+# ── Enumeration ───────────────────────────────────────────────────────────────
+
+@dataclass(slots=True)
+class QEnum:
+    """Enumerated sym vector — a named domain with all its symbols.
+    Displayed as: `domainName$`sym1`sym2`sym3
+    """
+    domain_name: str
+    domain:      "QVector"
+
+    def __str__(self) -> str:
+        items = "".join(f"`{v}" for v in self.domain.series)
+        return f"`{self.domain_name}${items}"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
 
 # ── Mixed / Nested list ───────────────────────────────────────────────────────
 
@@ -369,6 +392,6 @@ class QAdverb:
     verb:   QValue
 
 QValue = (
-    QNull | QAtom | QVector | QList | QDict |
+    QNull | QAtom | QVector | QList | QDict | QEnum |
     QTable | QKeyedTable | QLambda | QFn | QPartial | QBuiltin | QAdverb
 )

@@ -276,6 +276,31 @@ def q_find(x, y=None) -> QValue:
     raise QTypeError("find (?): expected vector as left argument")
 
 
+def q_enum_cast(domain: QValue, value: QValue) -> QValue:
+    """`sym$`AAPL — enumerate value over the given domain vector.
+    Returns the symbol atom if found; raises if missing.
+    """
+    if isinstance(domain, QVector) and domain.kind == "s":
+        val = value.value if isinstance(value, QAtom) else str(value)
+        if val in domain.series.to_list():
+            return QAtom(val, "s")
+        raise QTypeError(f"enum cast: {val!r} not in domain")
+    # Fallback to regular cast (single-char type codes handled by q_cast)
+    return q_cast(domain, value)
+
+
+def q_enum_extend(domain_name: str, domain: QValue, value: QValue) -> QValue:
+    """`sym?`MSFT — extend domain with value if absent; return the new enum vector."""
+    if isinstance(domain, QVector) and domain.kind == "s":
+        val = value.value if isinstance(value, QAtom) else str(value)
+        existing = domain.series.to_list()
+        new_items = existing if val in existing else existing + [val]
+        new_domain = QVector.from_items(new_items, "s")
+        return QEnum(domain_name, new_domain)
+    # Fallback to regular find for non-sym vectors
+    return q_find(domain, value)
+
+
 def q_in(x, y) -> QValue:
     """x in y — 1b if x is a member of y."""
     target = x.value if isinstance(x, QAtom) else x
@@ -948,6 +973,84 @@ def q_sublist(n, v) -> QValue:
     raise QTypeError("sublist: expected vector or list as right argument")
 
 
+# ── §20 Set operations ────────────────────────────────────────────────────────
+
+def q_union(x, y) -> QValue:
+    """x union y — distinct union of two vectors."""
+    joined = q_join(x, y)
+    return q_distinct(joined)
+
+
+def q_inter(x, y) -> QValue:
+    """x inter y — intersection of two vectors."""
+    if isinstance(x, QVector) and isinstance(y, QVector):
+        mask = x.series.is_in(y.series.to_list())
+        return QVector(x.series.filter(mask), x.kind)
+    raise QTypeError("inter: expected vectors")
+
+
+def q_except(x, y) -> QValue:
+    """x except y — set difference (elements of x not in y)."""
+    if isinstance(x, QVector) and isinstance(y, QVector):
+        mask = ~x.series.is_in(y.series.to_list())
+        return QVector(x.series.filter(mask), x.kind)
+    raise QTypeError("except: expected vectors")
+
+
+# ── §21 Navigation — next, prev, xprev ────────────────────────────────────────
+
+def q_next_m(x) -> QValue:
+    """next x — shift left by 1, null-fill last element."""
+    if isinstance(x, QVector):
+        return QVector(x.series.shift(-1), x.kind)
+    raise QTypeError("next: expected vector")
+
+
+def q_prev_m(x) -> QValue:
+    """prev x — shift right by 1, null-fill first element."""
+    if isinstance(x, QVector):
+        return QVector(x.series.shift(1), x.kind)
+    raise QTypeError("prev: expected vector")
+
+
+def q_xprev_d(n, x) -> QValue:
+    """n xprev x — shift x right by n, null-fill first n elements."""
+    n_val = _int_arg(n)
+    if isinstance(x, QVector):
+        return QVector(x.series.shift(n_val), x.kind)
+    raise QTypeError("xprev: expected vector")
+
+
+q_next  = QBuiltin("next",  monad=q_next_m,  dyad=None)
+q_prev  = QBuiltin("prev",  monad=q_prev_m,  dyad=None)
+q_xprev = QBuiltin("xprev", monad=None,      dyad=q_xprev_d)
+
+
+# ── §22 Null handling — fill (^), fills ───────────────────────────────────────
+
+def q_fill_d(fill_val, x) -> QValue:
+    """fill_val ^ x — fill nulls in x with fill_val.
+    If fill_val is null, forward-fill (equivalent to fills x).
+    """
+    if isinstance(x, QVector):
+        fill = fill_val.value if isinstance(fill_val, QAtom) else fill_val
+        if fill is None:
+            return QVector(x.series.forward_fill(), x.kind)
+        return QVector(x.series.fill_null(fill), x.kind)
+    raise QTypeError("^: expected vector as right argument")
+
+
+def q_fills_m(x) -> QValue:
+    """fills x — forward-fill nulls in x."""
+    if isinstance(x, QVector):
+        return QVector(x.series.forward_fill(), x.kind)
+    raise QTypeError("fills: expected vector")
+
+
+q_fill  = QBuiltin("fill",  monad=None,       dyad=q_fill_d)
+q_fills = QBuiltin("fills", monad=q_fills_m,  dyad=None)
+
+
 # ── §19 File I/O ──────────────────────────────────────────────────────────────
 
 def _handle_path(h) -> str:
@@ -1079,4 +1182,10 @@ VERB_TABLE: dict[str, QBuiltin] = {
     "sqrt": q_sqrt, "exp": q_exp, "log": q_log, "reciprocal": q_reciprocal,
     "xexp": q_xexp, "xlog": q_xlog,
     "div": q_idiv, "mod": q_mod,
+    # set ops
+    "union": q_union, "inter": q_inter, "except": q_except,
+    # navigation
+    "next": q_next, "prev": q_prev, "xprev": q_xprev,
+    # null handling
+    "^": q_fill, "fills": q_fills,
 }
