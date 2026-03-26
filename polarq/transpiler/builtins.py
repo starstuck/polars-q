@@ -95,6 +95,10 @@ VERB_MAP: dict[str, tuple[str, str]] = {
     "asc":        ("polarq.verbs", "q_asc"),
     "xasc":       ("polarq.verbs", "q_xasc"),
     "lj":         ("polarq.verbs", "q_lj"),
+    # I/O
+    "0:":         ("polarq.verbs", "q_zero_colon"),
+    "1:":         ("polarq.verbs", "q_one_colon"),
+    "set":        ("polarq.verbs", "q_set"),
 }
 
 ADVERB_MAP: dict[str, tuple[str, str]] = {

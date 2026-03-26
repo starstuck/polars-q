@@ -151,11 +151,20 @@ class QList:
     def __len__(self):  return len(self.items)
     def __repr__(self): return repr(self.items)
     def __str__(self):
-        """q-style display: () empty, ,x single, (a;b;c) multi."""
+        """q-style display: () empty, ,x single, (a;b;c) multi.
+        Exception: list of plain Python strings (char vectors) shows
+        each element on its own line wrapped in double-quotes, matching
+        q's display of read0 results and string lists.
+        """
         if len(self.items) == 0:
             return "()"
         if len(self.items) == 1:
-            return "," + str(self.items[0])
+            item = self.items[0]
+            if isinstance(item, str):
+                return f'"{item}"'
+            return "," + str(item)
+        if all(isinstance(item, str) for item in self.items):
+            return "\n".join(f'"{item}"' for item in self.items)
         return "(" + ";".join(str(item) for item in self.items) + ")"
 
 # ── Dict & Table ──────────────────────────────────────────────────────────────

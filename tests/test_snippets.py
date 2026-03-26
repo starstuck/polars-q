@@ -909,9 +909,7 @@ IO_SNIPPETS = [
 
 
 class TestIO:
-    """File I/O: 0:, 1:, read0, read1, get, set — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_FULL, strict=True)
+    """File I/O: 0:, 1:, read0, read1, get, set."""
 
     @pytest.mark.parametrize("q_code,expected", IO_SNIPPETS)
     def test_snippet(self, q_code, expected):

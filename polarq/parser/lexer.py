@@ -87,6 +87,9 @@ class TT(Enum):
     EQ      = auto()   # =
     LE      = auto()   # <=
     GE      = auto()   # >=
+    # I/O verbs
+    ZEROCOLON = auto()   # 0:
+    ONECOLON  = auto()   # 1:
     # Adverbs
     ADVERB_OVER      = auto()   # /
     ADVERB_SCAN      = auto()   # \  (when not followed by :)
@@ -155,6 +158,9 @@ _RAW_PATTERNS: list[tuple[TT | None, str]] = [
     # Typed nulls  0N  0n  0Nd  0Nt  0Np  0Nv  0Nu  0Nz  (plus generic ::)
     (TT.NULL,            r"0[Nn][a-z]?(?![a-zA-Z0-9_.])"),
     (TT.DCOLON,          r"::"),
+    # I/O verbs 0: 1: — must come before INT so `0:` doesn't become INT(0)+COLON
+    (TT.ZEROCOLON,       r"0:"),
+    (TT.ONECOLON,        r"1:"),
     # Temporal literals — checked before FLOAT/INT to avoid partial matches.
     # Order: TIMESTAMP > MONTH > DATE > TIME  (most specific first).
     (TT.TIMESTAMP,       r"\d{4}\.\d{2}\.\d{2}D\d{2}:\d{2}:\d{2}\.\d+"),
@@ -170,8 +176,8 @@ _RAW_PATTERNS: list[tuple[TT | None, str]] = [
     (TT.INT,             r"[0-9]+[ijhN]?(?![a-zA-Z0-9_.])"),
     # Strings
     (TT.STRING,          r'"(?:[^"\\]|\\.)*"'),
-    # Symbols (backtick, optional name body; chain handled by parser)
-    (TT.SYM,             r"`[a-zA-Z0-9_.]*"),
+    # Symbols: `:path  (hsym / file-handle)  or  `name  or  ` (empty)
+    (TT.SYM,             r"`:[a-zA-Z0-9_./\\-]*|`[a-zA-Z0-9_.]*"),
     # Adverbs — multi-character before single-character
     (TT.ADVERB_EACHRIGHT, r"/:"),
     (TT.ADVERB_EACHLEFT,  r"\\:"),

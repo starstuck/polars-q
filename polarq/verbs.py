@@ -834,6 +834,98 @@ q_xasc = QBuiltin("xasc", monad=None,     dyad=q_xasc_d)
 q_lj   = QBuiltin("lj",   monad=None,     dyad=q_lj_d)
 
 
+# ── §19 File I/O ──────────────────────────────────────────────────────────────
+
+def _handle_path(h) -> str:
+    """Extract filesystem path from a file-handle symbol `:path."""
+    val = h.value if isinstance(h, QAtom) else str(h)
+    return val[1:] if val.startswith(":") else val
+
+
+def _format_csv(sep: str, table: "QTable") -> QList:
+    """Format a QTable as a list of delimiter-separated strings."""
+    df = table.frame.collect()
+    cols = df.columns
+    rows = [sep.join(str(c) for c in cols)]
+    for row in df.iter_rows():
+        rows.append(sep.join(str(v) for v in row))
+    return QList(rows)
+
+
+def q_zero_colon(x, y=None) -> QValue:
+    """
+    0:  text I/O
+    Monadic: 0: handle    → read file lines as QList of strings
+    Dyadic:  handle 0: lines  → write lines to text file; returns handle
+             csv 0: table     → format table as CSV; returns QList of strings
+    """
+    if y is None:
+        # Monadic: read lines from file
+        path = _handle_path(x)
+        with open(path, "r") as f:
+            return QList(f.read().splitlines())
+    # Dyadic
+    x_val = x.value if isinstance(x, QAtom) else x
+    if isinstance(x, QAtom) and x.kind == "s" and str(x_val).startswith(":"):
+        # Write lines to file
+        path = _handle_path(x)
+        lines = y.items if isinstance(y, QList) else [str(y)]
+        with open(path, "w") as f:
+            f.write("\n".join(str(ln) for ln in lines))
+        return x
+    else:
+        # Format table with separator
+        sep = x_val if isinstance(x_val, str) else str(x_val)
+        if isinstance(y, QTable):
+            return _format_csv(sep, y)
+        raise QTypeError("0:: expected table as right argument with separator")
+
+
+def q_one_colon(x, y=None) -> QValue:
+    """1:  binary I/O (stub — delegates to get/set)."""
+    import pickle
+    if y is None:
+        path = _handle_path(x)
+        with open(path, "rb") as f:
+            return pickle.load(f)
+    path = _handle_path(x)
+    with open(path, "wb") as f:
+        pickle.dump(y, f)
+    return x
+
+
+def q_read0(handle) -> QList:
+    """read0 — read text file as list of strings."""
+    path = _handle_path(handle)
+    with open(path, "r") as f:
+        return QList(f.read().splitlines())
+
+
+def q_read1(handle) -> QValue:
+    """read1 — read binary file."""
+    import pickle
+    path = _handle_path(handle)
+    with open(path, "rb") as f:
+        return pickle.load(f)
+
+
+def q_set(handle, value) -> QValue:
+    """handle set value — serialize value to binary file; returns handle."""
+    import pickle
+    path = _handle_path(handle)
+    with open(path, "wb") as f:
+        pickle.dump(value, f)
+    return handle
+
+
+def q_get(handle) -> QValue:
+    """get handle — deserialize value from binary file."""
+    import pickle
+    path = _handle_path(handle)
+    with open(path, "rb") as f:
+        return pickle.load(f)
+
+
 # ── The global verb table (maps q token → QBuiltin) ───────────────────────────
 
 VERB_TABLE: dict[str, QBuiltin] = {

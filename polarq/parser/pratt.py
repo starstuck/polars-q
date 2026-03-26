@@ -84,6 +84,8 @@ _VERB_TOKENS: dict[TT, str] = {
     TT.KW_ALL:  "all",
     TT.KW_ANY:  "any",
     TT.COLON:   ":",
+    TT.ZEROCOLON: "0:",
+    TT.ONECOLON:  "1:",
 }
 
 # Adverb token types → their symbol string
@@ -107,6 +109,7 @@ _EXPR_START = frozenset({
     TT.UNDER, TT.TILDE, TT.AT, TT.COMMA, TT.CARET, TT.DOLLAR,
     TT.AMP, TT.PIPE, TT.LT, TT.GT, TT.EQ, TT.LE, TT.GE,
     TT.KW_NOT, TT.KW_ALL, TT.KW_ANY,
+    TT.ZEROCOLON, TT.ONECOLON,
 })
 
 # Literal node types that can be grouped into a VectorLit
@@ -618,6 +621,7 @@ def _fold_terms(terms: list) -> Any:
         "xasc", "xdesc",
         "lj", "aj", "uj", "pj",
         "each",
+        "set",
     })
 
     for i, node in enumerate(grouped):

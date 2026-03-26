@@ -47,6 +47,7 @@ from polarq.verbs     import (
     q_sums, q_prds, q_maxs, q_mins, q_avgs, q_deltas, q_ratios, q_differ,
     q_msum, q_mavg, q_mmin, q_mmax, q_mdev, q_ema,
     q_xbar, q_bin, q_wavg, q_wsum,
+    q_zero_colon, q_one_colon, q_read0, q_read1, q_get, q_set,
 )
 
 # Named keyword aliases — transpiled q code uses bare names like `neg x`, `abs x`
@@ -115,6 +116,12 @@ xbar       = q_xbar
 bin        = q_bin   # shadows Python builtin
 wavg       = q_wavg
 wsum       = q_wsum
+# I/O
+csv        = ","          # q's csv separator character
+read0      = q_read0
+read1      = q_read1
+get        = q_get
+set        = q_set        # shadows Python builtin in q exec context
 from polarq.adverbs   import over, scan, each, each_left, each_right, each_prior
 from polarq.qsql      import (q_select_rt, q_exec_rt, q_update_rt, q_delete_rt,
                                q_meta, q_tbl_col)
@@ -191,4 +198,7 @@ __all__ = [
     "sums", "prds", "maxs", "mins", "avgs", "deltas", "ratios", "differ",
     "msum", "mavg", "mmin", "mmax", "mdev", "ema",
     "xbar", "bin", "wavg", "wsum",
+    # I/O
+    "q_zero_colon", "q_one_colon", "q_read0", "q_read1", "q_get", "q_set",
+    "csv", "read0", "read1", "get", "set",
 ]
