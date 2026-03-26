@@ -342,11 +342,24 @@ class QBuiltin:
         raise QError(f"{self.name}: wrong number of args")
 
 @dataclass
+class QFn:
+    """
+    Transpiler-compiled q function.  Wraps a Python callable with the original
+    q source string so that  show / value  can inspect it.
+    """
+    fn:     Callable
+    source: str = ""   # q source, e.g. "{x+y}"
+
+    def __call__(self, *args): return self.fn(*args)
+    def __repr__(self):        return self.source if self.source else "{...}"
+    def __str__(self):         return self.__repr__()
+
+@dataclass
 class QAdverb:
     adverb: str    # "/" "\\" "'" "/:" "\\:"
     verb:   QValue
 
 QValue = (
     QNull | QAtom | QVector | QList | QDict |
-    QTable | QKeyedTable | QLambda | QPartial | QBuiltin | QAdverb
+    QTable | QKeyedTable | QLambda | QFn | QPartial | QBuiltin | QAdverb
 )

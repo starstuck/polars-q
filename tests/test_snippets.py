@@ -566,17 +566,17 @@ class TestIterators:
 # §11  LAMBDAS   ref: https://code.kx.com/q/ref/apply/
 # ══════════════════════════════════════════════════════════════════════════════╗
 
-_is_lambda = lambda lines: len(lines) == 1 and "<function" in lines[0]  # noqa: E731
+_is_lambda = lambda lines: len(lines) == 1 and lines[0].startswith("{")  # noqa: E731
 
 LAMBDA_SNIPPETS = [
-    # Definition
-    pytest.param("{x*x}",       _is_lambda,  id="implicit-def"),
-    pytest.param("{[a;b] a}",   _is_lambda,  id="explicit-def"),
+    # Definition — QFn now displays q source
+    pytest.param("{x*x}",       "{x*x}",      id="implicit-def"),
+    pytest.param("{[a;b] a}",   "{[a;b] a}",  id="explicit-def"),
     # Application — identity lambdas avoid the arithmetic gap
     pytest.param(["{[x;y] x}[3;4]"],        ["3"],  id="identity-first"),
     pytest.param(["{[x;y] y}[3;4]"],        ["4"],  id="identity-second"),
     pytest.param(["f:{[x;y] x}", "f[10;20]"],
-                 [lambda l: "<function" in l[0], "10"],
+                 ["{[x;y] x}", "10"],
                  id="named-apply"),
 ]
 
@@ -849,10 +849,10 @@ _xfail_kw = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
 
 META_SNIPPETS = [
     pytest.param("x:42\ntype x",            "-7h",             id="type-long"),
-    pytest.param("v:1 2 3\nkey v",          "7h",              marks=_xfail_kw, id="key-vector-type"),
-    pytest.param("x:42\nshow x",            "42",              marks=_xfail_kw, id="show"),
-    pytest.param("value {x+y}",             "({x+y};+;x;y)",   marks=_xfail_kw, id="value-lambda"),
-    pytest.param("parse \"1+2\"",           "(+;1;2)",         marks=_xfail_kw, id="parse"),
+    pytest.param("v:1 2 3\nkey v",          "7h",              id="key-vector-type"),
+    pytest.param("x:42\nshow x",            "42",              id="show"),
+    pytest.param("value {x+y}",             "({x+y};+;x;y)",   id="value-lambda"),
+    pytest.param("parse \"1+2\"",           "(+;1;2)",         id="parse"),
 ]
 
 

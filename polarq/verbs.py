@@ -532,16 +532,68 @@ def q_dict_create(keys, values) -> QDict:
     return QDict(keys, values)
 
 def q_key(x) -> QValue:
-    """key d — return the keys of a dict."""
+    """key x — keys of a dict, or type number of a vector/atom."""
     if isinstance(x, QDict):
         return x.keys
-    raise QTypeError("key: expected dict")
+    if isinstance(x, QVector):
+        return QAtom(_KIND_TYPE_NUM.get(x.kind, 0), "h")
+    if isinstance(x, QAtom):
+        return QAtom(_KIND_TYPE_NUM.get(x.kind, 0), "h")
+    raise QTypeError("key: expected dict or vector")
+
+
+def _ast_to_qval(node) -> QValue:
+    """Convert a parsed q AST node to a q runtime value (for parse/value)."""
+    from polarq.parser.ast_nodes import (
+        BinOp, MonOp, Name, IntLit, FloatLit, SymLit, StrLit,
+    )
+    if isinstance(node, BinOp):
+        return QList([node.op, _ast_to_qval(node.left), _ast_to_qval(node.right)])
+    if isinstance(node, MonOp):
+        return QList([node.op, _ast_to_qval(node.right)])
+    if isinstance(node, Name):
+        return node.name   # bare string — str() gives the name without quotes
+    if isinstance(node, IntLit):
+        return QAtom(node.value, node.kind)
+    if isinstance(node, FloatLit):
+        return QAtom(node.value, "f")
+    if isinstance(node, SymLit):
+        return QAtom(node.value, "s")
+    if isinstance(node, StrLit):
+        return node.value
+    return repr(node)
+
 
 def q_value(x) -> QValue:
-    """value d — return the values of a dict."""
+    """value x — values of a dict, or decompose a lambda into (body;verb;args...)."""
     if isinstance(x, QDict):
         return x.values
-    raise QTypeError("value: expected dict")
+    # QFn: decompose by re-parsing the source
+    if hasattr(x, "source") and hasattr(x, "fn") and x.source:
+        from polarq.parser import parse_expr
+        from polarq.parser.ast_nodes import Lambda
+        node = parse_expr(x.source)
+        if isinstance(node, Lambda) and node.body:
+            body_val = _ast_to_qval(node.body[-1])
+            if isinstance(body_val, QList):
+                return QList([x] + list(body_val.items))
+            return QList([x, body_val])
+        return QList([x])
+    raise QTypeError("value: expected dict or function")
+
+
+def q_show(x) -> None:
+    """show x — print x to stdout; returns None (REPL stays silent)."""
+    print(x)
+    return None
+
+
+def q_parse(s) -> QValue:
+    """parse s — parse a q string into its q value representation."""
+    from polarq.parser import parse_expr
+    raw = s.value if isinstance(s, QAtom) else str(s)
+    node = parse_expr(raw)
+    return _ast_to_qval(node)
 
 
 # ── Type introspection ────────────────────────────────────────────────────────

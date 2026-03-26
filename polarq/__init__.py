@@ -24,7 +24,7 @@ Typical usage in pure Python:
 """
 
 from polarq.types     import (QAtom, QVector, QList, QDict,
-                               QTable, QKeyedTable, QLambda,
+                               QTable, QKeyedTable, QLambda, QFn,
                                QBuiltin, QAdverb, QNull, qnull)
 from polarq.env       import QEnv
 from polarq.verbs     import (
@@ -38,7 +38,7 @@ from polarq.verbs     import (
     q_count, q_first, q_last, q_reverse, q_where, q_distinct, q_group,
     q_til, q_enlist, q_raze,
     q_type, q_cast, q_null,
-    q_dict_create, q_key, q_value,
+    q_dict_create, q_key, q_value, q_show, q_parse,
     q_flip, q_asc, q_xasc, q_lj,
     q_neg, q_abs, q_signum, q_ceiling, q_floor,
     q_sqrt, q_exp, q_log, q_reciprocal, q_xexp, q_xlog,
@@ -53,6 +53,8 @@ type       = q_type   # shadows Python builtin in q exec context
 null       = q_null
 key        = q_key
 value      = q_value
+show       = q_show
+parse      = q_parse
 flip       = q_flip
 asc        = q_asc
 xasc       = q_xasc
@@ -145,7 +147,7 @@ class Q:
 
 __all__ = [
     "Q", "qvec", "QAtom", "QVector", "QList", "QDict",
-    "QTable", "QKeyedTable", "QLambda", "QBuiltin", "QAdverb",
+    "QTable", "QKeyedTable", "QLambda", "QFn", "QBuiltin", "QAdverb",
     "QNull", "qnull", "QEnv", "PolarQServer", "PolarQClient",
     "over", "scan", "each", "each_left", "each_right", "each_prior",
     "compile_select", "compile_update", "compile_aj", "compile_wj",
@@ -155,7 +157,7 @@ __all__ = [
     "q_meta", "q_tbl_col",
     # verb functions (for transpiled code: `from polarq import *`)
     "q_type", "q_cast", "q_null",
-    "q_dict_create", "q_key", "q_value",
+    "q_dict_create", "q_key", "q_value", "q_show", "q_parse",
     "q_flip", "q_asc", "q_xasc", "q_lj",
     "q_add", "q_sub", "q_mul", "q_div",
     "q_lt", "q_gt", "q_eq", "q_le", "q_ge", "q_not",
@@ -175,7 +177,7 @@ __all__ = [
     "q_xbar", "q_bin", "q_wavg", "q_wsum",
     # keyword aliases
     "type", "null", "meta",
-    "key", "value",
+    "key", "value", "show", "parse",
     "flip", "asc", "xasc", "lj",
     "neg", "abs", "signum", "ceiling", "floor",
     "sqrt", "exp", "log", "reciprocal", "xexp", "xlog",

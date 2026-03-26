@@ -53,6 +53,45 @@ _Q_CMP_OP = {
 from polarq.transpiler.builtins import VERB_MAP, ADVERB_MAP
 
 
+def _q_unparse(node) -> str:
+    """Serialize a q AST node back to a q source string (best-effort)."""
+    from polarq.parser.ast_nodes import (
+        Lambda, BinOp, MonOp, Name, IntLit, FloatLit, SymLit, StrLit,
+        Apply, VectorLit, Assign,
+    )
+    if isinstance(node, Lambda):
+        body_str = ";".join(_q_unparse(s) for s in node.body)
+        if node.params:
+            return "{[" + ";".join(node.params) + "] " + body_str + "}"
+        return "{" + body_str + "}"
+    if isinstance(node, BinOp):
+        return _q_unparse(node.left) + node.op + _q_unparse(node.right)
+    if isinstance(node, MonOp):
+        return node.op + _q_unparse(node.right)
+    if isinstance(node, Assign):
+        return node.name + ":" + _q_unparse(node.expr)
+    if isinstance(node, Name):
+        return node.name
+    if isinstance(node, IntLit):
+        suffix = {"j": "", "i": "i", "h": "h"}.get(node.kind, "")
+        return str(node.value) + suffix
+    if isinstance(node, FloatLit):
+        return str(node.value)
+    if isinstance(node, SymLit):
+        return "`" + node.value
+    if isinstance(node, StrLit):
+        return '"' + node.value + '"'
+    if isinstance(node, VectorLit):
+        return " ".join(_q_unparse(i) for i in node.items)
+    if isinstance(node, Apply):
+        fn_str = _q_unparse(node.func)
+        if len(node.args) == 1 and node.args[0] is not None:
+            return fn_str + " " + _q_unparse(node.args[0])
+        args_str = ";".join("" if a is None else _q_unparse(a) for a in node.args)
+        return fn_str + "[" + args_str + "]"
+    return "..."
+
+
 class QToPythonTranspiler:
     """
     Walk a q AST and return a ``ast.Module`` ready for ``compile()``.
@@ -325,25 +364,27 @@ class QToPythonTranspiler:
         return py_ast.Call(func=fn, args=pargs, keywords=[])
 
     def _lambda(self, params: tuple, body: tuple) -> py_ast.expr:
+        from polarq.parser.ast_nodes import Lambda as LambdaNode
+        source = _q_unparse(LambdaNode(params=params, body=body))
         self._lambda_counter += 1
-        fn_name = f"_qfn_{self._lambda_counter}"
         args    = py_ast.arguments(
             posonlyargs=[],
             args=[py_ast.arg(arg=p) for p in (params or ("x", "y", "z"))],
             vararg=None, kwonlyargs=[], kw_defaults=[],
             kwarg=None, defaults=[],
         )
-        fn_body = [self._stmt(s) for s in body[:-1]]
-        fn_body.append(py_ast.Return(value=self._expr(body[-1])))
-        # Emit a module-level def (referenced by name)
-        # For now we produce a lambda-compatible expression for simple bodies
         if len(body) == 1:
-            # Single-expression lambda — works regardless of whether params are
-            # implicit or explicit, since Python lambda handles both.
-            return py_ast.Lambda(args=args, body=self._expr(body[0]))
-        # Multi-statement: cannot inline; caller should hoist to def
-        raise NotImplementedError(
-            "multi-statement lambdas require def-hoisting (not yet implemented)"
+            inner = py_ast.Lambda(args=args, body=self._expr(body[0]))
+        else:
+            # Multi-statement: cannot inline; caller should hoist to def
+            raise NotImplementedError(
+                "multi-statement lambdas require def-hoisting (not yet implemented)"
+            )
+        # Wrap in QFn so the function carries its q source for show/value.
+        return py_ast.Call(
+            func=py_ast.Name(id="QFn", ctx=py_ast.Load()),
+            args=[inner, py_ast.Constant(value=source)],
+            keywords=[],
         )
 
     def _adverb(self, verb: Any, adv: str) -> py_ast.expr:
