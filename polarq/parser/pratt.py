@@ -69,6 +69,7 @@ _VERB_TOKENS: dict[TT, str] = {
     TT.UNDER:   "_",
     TT.TILDE:   "~",
     TT.AT:      "@",
+    TT.DOT:     ".",
     TT.COMMA:   ",",
     TT.CARET:   "^",
     TT.DOLLAR:  "$",

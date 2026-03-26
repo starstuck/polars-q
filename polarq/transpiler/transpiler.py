@@ -221,7 +221,11 @@ class QToPythonTranspiler:
 
             case ListLit(items):
                 elts = [self._expr(i) for i in items]
-                return py_ast.List(elts=elts, ctx=py_ast.Load())
+                return py_ast.Call(
+                    func=py_ast.Name(id="QList", ctx=py_ast.Load()),
+                    args=[py_ast.List(elts=elts, ctx=py_ast.Load())],
+                    keywords=[],
+                )
 
             case Name(n):
                 return py_ast.Name(id=n, ctx=py_ast.Load())
@@ -326,6 +330,10 @@ class QToPythonTranspiler:
         raise NotImplementedError(f"transpiler: unknown monadic verb {op!r}")
 
     def _apply(self, func: Any, args: tuple) -> py_ast.expr:
+        # Apply(@) / Apply(.) — dispatch based on arity
+        if isinstance(func, Verb) and func.op in ("@", "."):
+            return self._apply_dot_at(func.op, args)
+
         # Apply(Adverb(verb, adv), args) → adverb_fn(verb_expr, *arg_exprs)
         if isinstance(func, Adverb):
             ref = ADVERB_MAP.get(func.adverb)
@@ -363,15 +371,41 @@ class QToPythonTranspiler:
 
         return py_ast.Call(func=fn, args=pargs, keywords=[])
 
+    def _apply_dot_at(self, op: str, args: tuple) -> py_ast.expr:
+        """
+        Dispatch Apply(@/.) based on arity:
+          @[x;i;fn]     → q_amend_at(x, i, fn)   (3-arg amend)
+          @[x;i]        → q_at_apply(x, i)        (2-arg index)
+          .[f;args;h]   → q_trap(f, args, h)      (3-arg trap)
+          .[f;args]     → q_dot_apply(f, args)    (2-arg apply)
+        """
+        pargs = [self._expr(a) if a is not None else py_ast.Constant(value=None)
+                 for a in args]
+        if op == "@":
+            fn_name = "q_amend_at" if len(args) >= 3 else "q_at_apply"
+        else:  # "."
+            fn_name = "q_trap" if len(args) >= 3 else "q_dot_apply"
+        return py_ast.Call(
+            func=py_ast.Name(id=fn_name, ctx=py_ast.Load()),
+            args=pargs, keywords=[],
+        )
+
     def _lambda(self, params: tuple, body: tuple) -> py_ast.expr:
         from polarq.parser.ast_nodes import Lambda as LambdaNode
         source = _q_unparse(LambdaNode(params=params, body=body))
         self._lambda_counter += 1
+        param_names = params or ("x", "y", "z")
+        # Implicit-param lambdas ({x+y}) use default None so they can be called
+        # monadically / dyadically without raising TypeError for unused params.
+        if params:
+            defaults = []
+        else:
+            defaults = [py_ast.Constant(value=None)] * len(param_names)
         args    = py_ast.arguments(
             posonlyargs=[],
-            args=[py_ast.arg(arg=p) for p in (params or ("x", "y", "z"))],
+            args=[py_ast.arg(arg=p) for p in param_names],
             vararg=None, kwonlyargs=[], kw_defaults=[],
-            kwarg=None, defaults=[],
+            kwarg=None, defaults=defaults,
         )
         if len(body) == 1:
             inner = py_ast.Lambda(args=args, body=self._expr(body[0]))

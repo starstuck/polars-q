@@ -38,6 +38,7 @@ from polarq.verbs     import (
     q_count, q_first, q_last, q_reverse, q_where, q_distinct, q_group,
     q_til, q_enlist, q_raze,
     q_type, q_cast, q_null,
+    q_at_apply, q_dot_apply, q_amend_at, q_trap,
     q_dict_create, q_key, q_value, q_show, q_parse,
     q_flip, q_asc, q_xasc, q_lj,
     q_neg, q_abs, q_signum, q_ceiling, q_floor,
@@ -157,6 +158,7 @@ __all__ = [
     "q_meta", "q_tbl_col",
     # verb functions (for transpiled code: `from polarq import *`)
     "q_type", "q_cast", "q_null",
+    "q_at_apply", "q_dot_apply", "q_amend_at", "q_trap",
     "q_dict_create", "q_key", "q_value", "q_show", "q_parse",
     "q_flip", "q_asc", "q_xasc", "q_lj",
     "q_add", "q_sub", "q_mul", "q_div",

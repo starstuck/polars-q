@@ -874,15 +874,13 @@ APPLY_SNIPPETS = [
     pytest.param("(1 2 3 4 5) @ 2",             "3",   id="index-at"),
     pytest.param("(1 2 3;4 5 6) . (1;0)",       "4",   id="index-dot-nested"),
     pytest.param("@[(1 2 3);1;{x*10}]",         "1 20 3", id="amend-at"),
-    pytest.param(".[add;(3;4);{\"err:\",x}]",   "7",   id="trap-success"),
+    pytest.param(".[{x+y};(3;4);{\"err:\",x}]",   "7",   id="trap-success"),
     pytest.param(".[{x%0};(1f);{\"err\"}]",     "err", id="trap-error"),
 ]
 
 
 class TestApply:
-    """Apply (. @) and index — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_TRANSPILER, strict=True)
+    """Apply (. @) and index."""
 
     @pytest.mark.parametrize("q_code,expected", APPLY_SNIPPETS)
     def test_snippet(self, q_code, expected):

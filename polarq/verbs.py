@@ -525,6 +525,79 @@ q_ss   = QBuiltin("ss",   monad=lambda x: x, dyad=_ss_dyad)
 q_sv   = QBuiltin("sv",   monad=lambda x: x, dyad=_sv_dyad)
 q_vs   = QBuiltin("vs",   monad=lambda x: x, dyad=_vs_dyad)
 
+# ── Apply / Index / Amend ─────────────────────────────────────────────────────
+
+def _index_at(x, i):
+    """Index into x at position i (single level)."""
+    idx = i.value if isinstance(i, QAtom) else int(i)
+    if isinstance(x, QVector):
+        val = x.series[idx]
+        # polars returns a Python scalar from series[int]
+        return QAtom(val, x.kind)
+    if isinstance(x, QList):
+        return x.items[idx]
+    if isinstance(x, (list, tuple)):
+        return x[idx]
+    raise QTypeError(f"index-at: cannot index {type(x).__name__}")
+
+
+def q_at_apply(f_or_x, idx) -> QValue:
+    """
+    f @ x — apply callable f to x (single arg), or index into x at idx.
+    f @ x where f is callable → f(x)
+    vec @ i                   → vec[i]
+    """
+    if callable(f_or_x) and not isinstance(f_or_x, (QVector, QList)):
+        return f_or_x(idx)
+    return _index_at(f_or_x, idx)
+
+
+def q_dot_apply(f_or_x, args) -> QValue:
+    """
+    f . args — apply f to argument list, or nested index.
+    f . (a;b) where f is callable → f(a, b)
+    x . (i;j) where x is indexable → x[i][j]
+    """
+    if callable(f_or_x) and not isinstance(f_or_x, (QVector, QList)):
+        if isinstance(args, QList):
+            return f_or_x(*args.items)
+        return f_or_x(args)
+    # Nested indexing
+    result = f_or_x
+    idx_list = args.items if isinstance(args, QList) else [args]
+    for i in idx_list:
+        result = _index_at(result, i)
+    return result
+
+
+def q_amend_at(x, i, fn) -> QValue:
+    """@[x;i;fn] — apply fn to x[i] and return the modified collection."""
+    idx = i.value if isinstance(i, QAtom) else int(i)
+    if isinstance(x, QVector):
+        items = x.series.to_list()
+        old_val = QAtom(items[idx], x.kind)
+        new_val = fn(old_val)
+        items[idx] = new_val.value if isinstance(new_val, QAtom) else new_val
+        return QVector.from_items(items, x.kind)
+    if isinstance(x, QList):
+        items = list(x.items)
+        items[idx] = fn(items[idx])
+        return QList(items)
+    raise QTypeError(f"amend-at: cannot amend {type(x).__name__}")
+
+
+def q_trap(f, args, handler) -> QValue:
+    """.[f;args;handler] — call f with args; on error call handler(err_string)."""
+    try:
+        if isinstance(args, QList):
+            arg_list = args.items
+        else:
+            arg_list = [args]
+        return f(*arg_list)
+    except Exception as e:
+        return handler(str(e))
+
+
 # ── Dictionary verbs ─────────────────────────────────────────────────────────
 
 def q_dict_create(keys, values) -> QDict:

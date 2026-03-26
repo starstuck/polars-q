@@ -76,6 +76,7 @@ class TT(Enum):
     UNDER   = auto()   # _
     TILDE   = auto()   # ~
     AT      = auto()   # @
+    DOT     = auto()   # .  (apply / index operator — standalone, not part of name)
     COMMA   = auto()   # ,
     CARET   = auto()   # ^
     DOLLAR  = auto()   # $
@@ -117,6 +118,7 @@ KEYWORDS: dict[str, TT] = {
 _VALUE_CLOSE = frozenset({
     TT.INT, TT.FLOAT, TT.BOOL, TT.SYM, TT.STRING, TT.NULL,
     TT.DATE, TT.TIME, TT.TIMESTAMP, TT.MONTH,
+    TT.DOT,
     TT.NAME,
     TT.KW_SELECT, TT.KW_UPDATE, TT.KW_EXEC, TT.KW_DELETE,
     TT.KW_FROM, TT.KW_WHERE, TT.KW_BY,
@@ -209,6 +211,8 @@ _RAW_PATTERNS: list[tuple[TT | None, str]] = [
     (TT.EQ,      r"="),
     # Names / keywords — also handles dotted namespace names like .z.p or .myns.foo
     (TT.NAME,    r"\.[a-zA-Z][a-zA-Z0-9_.]*|[a-zA-Z_][a-zA-Z0-9_.]*"),
+    # Standalone dot — apply/index operator; must come after NAME so .foo matches NAME
+    (TT.DOT,     r"\."),
 ]
 
 # Compile all patterns once
