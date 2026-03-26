@@ -622,6 +622,7 @@ def _fold_terms(terms: list) -> Any:
         "lj", "aj", "uj", "pj",
         "each",
         "set",
+        "rotate", "sublist",
     })
 
     for i, node in enumerate(grouped):

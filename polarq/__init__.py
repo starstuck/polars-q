@@ -48,6 +48,7 @@ from polarq.verbs     import (
     q_msum, q_mavg, q_mmin, q_mmax, q_mdev, q_ema,
     q_xbar, q_bin, q_wavg, q_wsum,
     q_zero_colon, q_one_colon, q_read0, q_read1, q_get, q_set,
+    q_take, q_drop, q_rotate, q_sublist,
 )
 
 # Named keyword aliases — transpiled q code uses bare names like `neg x`, `abs x`
@@ -198,6 +199,8 @@ __all__ = [
     "sums", "prds", "maxs", "mins", "avgs", "deltas", "ratios", "differ",
     "msum", "mavg", "mmin", "mmax", "mdev", "ema",
     "xbar", "bin", "wavg", "wsum",
+    # slicing
+    "q_take", "q_drop", "q_rotate", "q_sublist",
     # I/O
     "q_zero_colon", "q_one_colon", "q_read0", "q_read1", "q_get", "q_set",
     "csv", "read0", "read1", "get", "set",

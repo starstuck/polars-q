@@ -411,9 +411,7 @@ class TestListCore:
 
 
 class TestListSlicing:
-    """List slicing: take (#), drop (_), rotate, sublist — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_TRANSPILER, strict=True)
+    """List slicing: take (#), drop (_), rotate, sublist."""
 
     @pytest.mark.parametrize("q_code,expected", LIST_SLICE_SNIPPETS)
     def test_snippet(self, q_code, expected):
@@ -844,8 +842,6 @@ class TestTemporal:
 # ╔══════════════════════════════════════════════════════════════════════════════
 # §17  META / INTROSPECTION   ref: https://code.kx.com/q/ref/meta/
 # ══════════════════════════════════════════════════════════════════════════════╗
-
-_xfail_kw = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
 
 META_SNIPPETS = [
     pytest.param("x:42\ntype x",            "-7h",             id="type-long"),

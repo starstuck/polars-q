@@ -95,6 +95,11 @@ VERB_MAP: dict[str, tuple[str, str]] = {
     "asc":        ("polarq.verbs", "q_asc"),
     "xasc":       ("polarq.verbs", "q_xasc"),
     "lj":         ("polarq.verbs", "q_lj"),
+    # slicing
+    "#":          ("polarq.verbs", "q_take"),
+    "_":          ("polarq.verbs", "q_drop"),
+    "rotate":     ("polarq.verbs", "q_rotate"),
+    "sublist":    ("polarq.verbs", "q_sublist"),
     # I/O
     "0:":         ("polarq.verbs", "q_zero_colon"),
     "1:":         ("polarq.verbs", "q_one_colon"),

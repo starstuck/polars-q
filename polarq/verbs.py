@@ -834,6 +834,77 @@ q_xasc = QBuiltin("xasc", monad=None,     dyad=q_xasc_d)
 q_lj   = QBuiltin("lj",   monad=None,     dyad=q_lj_d)
 
 
+# ── §8 List slicing — take, drop, rotate, sublist ────────────────────────────
+
+def _int_arg(x) -> int:
+    return int(x.value) if isinstance(x, QAtom) else int(x)
+
+
+def q_take(n, v=None) -> QValue:
+    """n # v  — take first n (negative: last |n|).  Monadic: count."""
+    if v is None:
+        return q_count(n)
+    count = _int_arg(n)
+    if isinstance(v, QVector):
+        s = v.series
+        sl = s.slice(0, count) if count >= 0 else s.slice(max(0, len(s) + count))
+        return QVector(sl, v.kind)
+    if isinstance(v, QList):
+        items = v.items
+        return QList(items[:count] if count >= 0 else items[count:])
+    raise QTypeError("take (#): expected vector or list as right argument")
+
+
+def q_drop(n, v=None) -> QValue:
+    """n _ v  — drop first n (negative: last |n|).  Monadic: floor."""
+    if v is None:
+        return q_floor(n)
+    count = _int_arg(n)
+    if isinstance(v, QVector):
+        s = v.series
+        sl = s.slice(count) if count >= 0 else s.slice(0, max(0, len(s) + count))
+        return QVector(sl, v.kind)
+    if isinstance(v, QList):
+        items = v.items
+        return QList(items[count:] if count >= 0 else items[:len(items) + count])
+    raise QTypeError("drop (_): expected vector or list as right argument")
+
+
+def q_rotate(n, v) -> QValue:
+    """n rotate v  — left-rotate v by n positions."""
+    count = _int_arg(n)
+    if isinstance(v, QVector):
+        items = v.series.to_list()
+        if not items:
+            return v
+        k = count % len(items)
+        return QVector.from_items(items[k:] + items[:k], v.kind)
+    if isinstance(v, QList):
+        items = v.items
+        if not items:
+            return v
+        k = count % len(items)
+        return QList(items[k:] + items[:k])
+    raise QTypeError("rotate: expected vector or list as right argument")
+
+
+def q_sublist(n, v) -> QValue:
+    """n sublist v  — take first n items (or (start;n) sublist v)."""
+    if isinstance(n, QList) and len(n.items) == 2:
+        start = _int_arg(n.items[0])
+        count = _int_arg(n.items[1])
+        if isinstance(v, QVector):
+            return QVector(v.series.slice(start, count), v.kind)
+        if isinstance(v, QList):
+            return QList(v.items[start:start + count])
+    count = _int_arg(n)
+    if isinstance(v, QVector):
+        return QVector(v.series.slice(0, count), v.kind)
+    if isinstance(v, QList):
+        return QList(v.items[:count])
+    raise QTypeError("sublist: expected vector or list as right argument")
+
+
 # ── §19 File I/O ──────────────────────────────────────────────────────────────
 
 def _handle_path(h) -> str:
