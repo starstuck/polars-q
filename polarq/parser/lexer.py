@@ -76,6 +76,7 @@ class TT(Enum):
     UNDER   = auto()   # _
     TILDE   = auto()   # ~
     AT      = auto()   # @
+    QUESTION= auto()   # ?  (find / distinct)
     DOT     = auto()   # .  (apply / index operator — standalone, not part of name)
     COMMA   = auto()   # ,
     CARET   = auto()   # ^
@@ -205,6 +206,7 @@ _RAW_PATTERNS: list[tuple[TT | None, str]] = [
     (TT.UNDER,   r"_"),
     (TT.TILDE,   r"~"),
     (TT.AT,      r"@"),
+    (TT.QUESTION,r"\?"),
     (TT.COMMA,   r","),
     (TT.CARET,   r"\^"),
     (TT.DOLLAR,  r"\$"),

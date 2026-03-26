@@ -69,6 +69,7 @@ _VERB_TOKENS: dict[TT, str] = {
     TT.UNDER:   "_",
     TT.TILDE:   "~",
     TT.AT:      "@",
+    TT.QUESTION:"?",
     TT.DOT:     ".",
     TT.COMMA:   ",",
     TT.CARET:   "^",
@@ -110,6 +111,8 @@ _EXPR_START = frozenset({
     TT.AMP, TT.PIPE, TT.LT, TT.GT, TT.EQ, TT.LE, TT.GE,
     TT.KW_NOT, TT.KW_ALL, TT.KW_ANY,
     TT.ZEROCOLON, TT.ONECOLON,
+    TT.QUESTION,
+    TT.KW_WHERE,   # `where` is also a monadic function outside qSQL
 })
 
 # Literal node types that can be grouped into a VectorLit
@@ -305,6 +308,11 @@ class Parser:
         elif tok.type == TT.NAME:
             self._advance()
             node = Name(tok.value)
+
+        # ── Keywords that double as monadic functions outside qSQL ────────────
+        elif tok.type == TT.KW_WHERE:
+            self._advance()
+            node = Name("where")
 
         # ── Parenthesised expression / list ──────────────────────────────────
         elif tok.type == TT.LPAREN:
@@ -623,6 +631,7 @@ def _fold_terms(terms: list) -> Any:
         "each",
         "set",
         "rotate", "sublist",
+        "in", "within",
     })
 
     for i, node in enumerate(grouped):

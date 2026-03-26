@@ -248,14 +248,57 @@ def q_distinct_m(x):
     return x
 
 def q_group_m(x):
-    """group — returns dict of sym→indices (like q's group)."""
+    """group — returns dict of value→indices, sorted by key."""
     if isinstance(x, QVector):
         df = x.series.to_frame("v").with_row_index("i")
-        grp = df.group_by("v").agg(pl.col("i").sort())
-        keys   = QVector(grp["v"], x.kind)
-        values = QList([QVector(row, "j") for row in grp["i"].to_list()])
+        grp = df.group_by("v").agg(pl.col("i").sort()).sort("v")
+        keys = QVector(grp["v"], x.kind)
+        values = QList([
+            QList([QAtom(row[0], "j")]) if len(row) == 1
+            else QVector.from_items(row, "j")
+            for row in grp["i"].to_list()
+        ])
         return QDict(keys, values)
     raise QTypeError("group expects vector")
+
+def q_find(x, y=None) -> QValue:
+    """?  monadic: distinct  dyadic: x?y → 0-based index of y in x, or count if missing."""
+    if y is None:
+        return q_distinct_m(x)
+    target = y.value if isinstance(y, QAtom) else y
+    if isinstance(x, QVector):
+        items = x.series.to_list()
+        try:
+            idx = items.index(target)
+        except ValueError:
+            idx = len(items)
+        return QAtom(idx, "j")
+    raise QTypeError("find (?): expected vector as left argument")
+
+
+def q_in(x, y) -> QValue:
+    """x in y — 1b if x is a member of y."""
+    target = x.value if isinstance(x, QAtom) else x
+    if isinstance(y, QVector):
+        return QAtom(target in y.series.to_list(), "b")
+    if isinstance(y, QList):
+        vals = [i.value if isinstance(i, QAtom) else i for i in y.items]
+        return QAtom(target in vals, "b")
+    raise QTypeError("in: expected vector or list as right argument")
+
+
+def q_within(x, y) -> QValue:
+    """x within y — 1b if lo <= x <= hi where y = (lo;hi) or a 2-element vector."""
+    val = x.value if isinstance(x, QAtom) else x
+    if isinstance(y, QVector):
+        items = y.series.to_list()
+        return QAtom(items[0] <= val <= items[1], "b")
+    if isinstance(y, QList) and len(y.items) == 2:
+        lo = y.items[0].value if isinstance(y.items[0], QAtom) else y.items[0]
+        hi = y.items[1].value if isinstance(y.items[1], QAtom) else y.items[1]
+        return QAtom(lo <= val <= hi, "b")
+    raise QTypeError("within: expected 2-element vector or list as right argument")
+
 
 q_count   = QBuiltin("count",   monad=q_count_m,   dyad=None)
 q_first   = QBuiltin("first",   monad=q_first_m,   dyad=None)

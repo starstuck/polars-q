@@ -381,7 +381,7 @@ LIST_SEARCH_SNIPPETS = [
     pytest.param("9 in 1 2 3",       "0b",           id="in-false"),
     pytest.param("2 within 1 3",     "1b",           id="within-true"),
     pytest.param("where 1b 0b 1b",   "0 2",          id="where"),
-    pytest.param("group 1 2 1 3 2",  "1|0 2\n2|1 4\n3|,3",  id="group"),
+    pytest.param("group 1 2 1 3 2",  ["1|0 2", "2|1 4", "3|,3"],  id="group"),
 ]
 
 LIST_SET_SNIPPETS = [
@@ -419,9 +419,7 @@ class TestListSlicing:
 
 
 class TestListSearch:
-    """List search: find (?), in, within, where, group — xfail."""
-
-    pytestmark = pytest.mark.xfail(reason=_NYI_KEYWORDS, strict=True)
+    """List search: find (?), in, within, where, group."""
 
     @pytest.mark.parametrize("q_code,expected", LIST_SEARCH_SNIPPETS)
     def test_snippet(self, q_code, expected):
